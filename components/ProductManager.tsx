@@ -10,13 +10,15 @@ interface Props {
   onDelete: (id: string) => void;
   onBatchDelete: (ids: string[]) => void;
   onBatchEdit: (ids: string[], updates: Partial<Product>) => void;
+  stockMap?: Record<string, number>;
+  onUpdateStock?: (id: string, newStock: number) => void;
 }
 
-type SortKey = 'name' | 'category' | 'price';
+type SortKey = 'name' | 'category' | 'price' | 'stock';
 
-export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDelete, onBatchDelete, onBatchEdit }) => {
+export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDelete, onBatchDelete, onBatchEdit, stockMap, onUpdateStock }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<Partial<Product>>({});
+  const [editForm, setEditForm] = useState<Partial<Product> & { tempStock?: number }>({});
   const [isAdding, setIsAdding] = useState(false);
   const [newProduct, setNewProduct] = useState<Partial<Product>>({ name: '', unit: '瓶', price: 0, category: '其他' });
   const [initialStock, setInitialStock] = useState<number>(0);
@@ -29,8 +31,13 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
   // Sorting Logic
   const sortedProducts = useMemo(() => {
     return [...products].sort((a, b) => {
-      const valA = a[sortKey] || '';
-      const valB = b[sortKey] || '';
+      let valA: any = a[sortKey as keyof Product] || '';
+      let valB: any = b[sortKey as keyof Product] || '';
+
+      if (sortKey === 'stock' && stockMap) {
+         valA = stockMap[a.id] || 0;
+         valB = stockMap[b.id] || 0;
+      }
 
       if (typeof valA === 'string' && typeof valB === 'string') {
         return sortDir === 'asc' ? valA.localeCompare(valB, 'zh-CN') : valB.localeCompare(valA, 'zh-CN');
@@ -39,7 +46,7 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
       if (valA > valB) return sortDir === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [products, sortKey, sortDir]);
+  }, [products, sortKey, sortDir, stockMap]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -85,13 +92,24 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
 
   const startEdit = (p: Product) => {
     setEditingId(p.id);
-    setEditForm({ ...p });
+    setEditForm({ ...p, tempStock: stockMap ? (stockMap[p.id] || 0) : 0 });
     playFocusSound();
   };
 
   const saveEdit = () => {
     if (editingId && editForm.name) {
-      onEdit(editForm as Product);
+      // Save product details
+      const { tempStock, ...productData } = editForm;
+      onEdit(productData as Product);
+
+      // Save stock if changed
+      if (tempStock !== undefined && stockMap && onUpdateStock) {
+        const currentStock = stockMap[editingId] || 0;
+        if (tempStock !== currentStock) {
+          onUpdateStock(editingId, tempStock);
+        }
+      }
+
       setEditingId(null);
       playCommitSound();
     }
@@ -212,6 +230,10 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
               <th className="px-6 py-5 text-right cursor-pointer hover:bg-purple-100/50 transition-colors" onClick={() => handleSort('price')}>
                 单价 <ArrowUpDown size={14} className={`inline ${sortKey === 'price' ? 'opacity-100' : 'opacity-20'}`} />
               </th>
+              {/* Added Stock Column */}
+              <th className="px-6 py-5 text-center cursor-pointer hover:bg-purple-100/50 transition-colors" onClick={() => handleSort('stock')}>
+                当前库存 <ArrowUpDown size={14} className={`inline ${sortKey === 'stock' ? 'opacity-100' : 'opacity-20'}`} />
+              </th>
               <th className="px-6 py-5 text-right">操作</th>
             </tr>
           </thead>
@@ -231,6 +253,10 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
                       <td className="px-6 py-4"><input className="border-2 border-purple-200 rounded-lg px-2 py-2 w-full focus:outline-none focus:border-violet-400" value={editForm.category} onChange={e => setEditForm({...editForm, category: e.target.value})} /></td>
                       <td className="px-6 py-4"><input className="border-2 border-purple-200 rounded-lg px-2 py-2 w-20 focus:outline-none focus:border-violet-400" value={editForm.unit} onChange={e => setEditForm({...editForm, unit: e.target.value})} /></td>
                       <td className="px-6 py-4 text-right"><input type="number" className="border-2 border-purple-200 rounded-lg px-2 py-2 w-24 text-right focus:outline-none focus:border-violet-400" value={editForm.price} onChange={e => setEditForm({...editForm, price: parseFloat(e.target.value)})} /></td>
+                      {/* Stock Edit Input */}
+                      <td className="px-6 py-4 text-center">
+                        <input type="number" className="border-2 border-orange-200 rounded-lg px-2 py-2 w-24 text-center font-bold text-orange-600 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100" value={editForm.tempStock} onChange={e => setEditForm({...editForm, tempStock: parseFloat(e.target.value)})} />
+                      </td>
                       <td className="px-6 py-4 text-right">
                          <div className="flex justify-end gap-2">
                            <button onClick={saveEdit} className="text-white bg-green-500 hover:bg-green-600 p-2 rounded-xl transition-colors shadow-sm"><Save size={18}/></button>
@@ -244,6 +270,10 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
                       <td className="px-6 py-4 text-slate-500"><span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold border border-purple-200">{p.category}</span></td>
                       <td className="px-6 py-4 text-slate-500">{p.unit}</td>
                       <td className="px-6 py-4 text-right font-medium text-slate-600 text-base font-mono">¥{p.price}</td>
+                      {/* Stock Display */}
+                      <td className="px-6 py-4 text-center font-mono font-bold text-lg text-violet-600">
+                        {stockMap ? (stockMap[p.id] || 0) : '-'}
+                      </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-3">
                           <button onClick={() => startEdit(p)} className="text-indigo-600 bg-indigo-50 hover:bg-indigo-100 p-2.5 rounded-xl transition-colors border border-indigo-100"><Edit2 size={18}/></button>

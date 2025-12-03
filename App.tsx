@@ -121,6 +121,15 @@ const AppContent: React.FC = () => {
     return getTableDataForDate(data, currentDate);
   }, [data, currentDate]);
   
+  // Create a map of ID -> Stock for ProductManager
+  const stockMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    tableData.forEach(row => {
+      map[row.id] = row.calculatedStock;
+    });
+    return map;
+  }, [tableData]);
+  
   // Filtered Data for Inventory View
   const filteredInventoryData = useMemo(() => {
     return tableData.filter(item => 
@@ -219,6 +228,21 @@ const AppContent: React.FC = () => {
         operations: newOperations
       };
     });
+  };
+  
+  // Handler to update stock from Product Manager
+  const handleProductStockUpdate = (productId: string, newStock: number) => {
+    const currentRow = tableData.find(r => r.id === productId);
+    if (!currentRow) return;
+
+    const currentCalculated = currentRow.calculatedStock;
+    const diff = newStock - currentCalculated;
+    
+    // We adjust the opening stock for today to align the final calculated stock
+    // New Opening = Old Opening + Diff
+    const newOpening = currentRow.openingStock + diff;
+    
+    updateLog(productId, 'openingStock', newOpening, currentRow.openingStock);
   };
 
   const handleProductAdd = (p: Product, initialStock: number) => {
@@ -435,6 +459,8 @@ const AppContent: React.FC = () => {
                 onDelete={handleProductDelete}
                 onBatchDelete={handleBatchProductDelete}
                 onBatchEdit={handleBatchProductEdit}
+                stockMap={stockMap}
+                onUpdateStock={handleProductStockUpdate}
               />
             </div>
           ) : view === ViewMode.ANALYTICS ? (
