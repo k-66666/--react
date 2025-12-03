@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Product } from '../types';
 import { Plus, Trash2, Edit2, Save, X, PackagePlus, FolderInput, CheckSquare, Square, Sparkles, ArrowUpDown } from 'lucide-react';
@@ -101,7 +100,8 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
   const handleAdd = () => {
     if (newProduct.name) {
       onAdd({
-        id: Date.now().toString(),
+        // Robust ID generation
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
         name: newProduct.name!,
         unit: newProduct.unit || '瓶',
         price: newProduct.price || 0,

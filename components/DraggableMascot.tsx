@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { playRandomMeow } from '../services/soundService';
 
@@ -9,7 +8,7 @@ export const DraggableMascot: React.FC = () => {
   const dragOffset = useRef({ x: 0, y: 0 });
 
   // Animation State
-  const [hearts, setHearts] = useState<{id: number, left: number, animationDuration: number}[]>([]);
+  const [hearts, setHearts] = useState<{id: string, left: number, animationDuration: number}[]>([]);
   const [isJelly, setIsJelly] = useState(false);
   const [mascotMsg, setMascotMsg] = useState("");
   const [showBubble, setShowBubble] = useState(false);
@@ -54,7 +53,8 @@ export const DraggableMascot: React.FC = () => {
     
     // Heart Particles
     const newHeart = {
-      id: Date.now(),
+      // Use robust random ID to prevent key collisions
+      id: `${Date.now()}-${Math.random()}`,
       left: Math.random() * 60 - 30,
       animationDuration: 1 + Math.random()
     };

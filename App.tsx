@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Component, ErrorInfo } from 'react';
 import { AppData, DailyLogEntry, Product, ViewMode, OperationLog } from './types';
 import { loadData, saveData, getFormattedDate, getTableDataForDate, getTodaysOperations } from './services/storageService';
 import { InventoryTable } from './components/InventoryTable';
@@ -11,11 +10,49 @@ import { OperationHistory } from './components/OperationHistory';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { WeatherWidget } from './components/WeatherWidget';
 import { DraggableMascot } from './components/DraggableMascot';
-import { LayoutDashboard, Package, Calendar, Settings as SettingsIcon, ChevronLeft, ChevronRight, Sun, Moon, CloudSun, Clock, Star, PieChart, History as HistoryIcon, Search, Download, TrendingUp, Cat } from 'lucide-react';
+import { LayoutDashboard, Package, Calendar, Settings as SettingsIcon, ChevronLeft, ChevronRight, Sun, Moon, CloudSun, Clock, Star, PieChart, History as HistoryIcon, Search, Download, TrendingUp, Cat, AlertTriangle } from 'lucide-react';
 import { playFocusSound, playCommitSound } from './services/soundService';
 import * as XLSX from 'xlsx';
 
-const App: React.FC = () => {
+// Error Boundary to catch crashes
+class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(_: Error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+          <div className="bg-white p-8 rounded-3xl shadow-xl text-center max-w-md">
+            <AlertTriangle className="mx-auto text-amber-500 mb-4" size={48} />
+            <h2 className="text-xl font-bold text-slate-800 mb-2">出了一点小问题</h2>
+            <p className="text-slate-500 mb-6">页面遇到错误停止了运行。请尝试刷新页面。</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="bg-violet-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-violet-700 transition-colors"
+            >
+              刷新页面
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+const AppContent: React.FC = () => {
   // --- State ---
   const [data, setData] = useState<AppData>(loadData());
   const [currentDate, setCurrentDate] = useState<string>(getFormattedDate(new Date()));
@@ -164,7 +201,8 @@ const App: React.FC = () => {
            const delta = typeof value === 'number' && typeof previousValue === 'number' ? value - previousValue : undefined;
 
            const opLog: OperationLog = {
-             id: Date.now().toString(),
+             // Robust ID generation to avoid duplicate keys during rapid updates
+             id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
              timestamp: Date.now(),
              type,
              productName: product.name,
@@ -415,6 +453,15 @@ const App: React.FC = () => {
         </div>
       </main>
     </div>
+  );
+};
+
+// Wrap main app with Error Boundary
+const App: React.FC = () => {
+  return (
+    <ErrorBoundary>
+      <AppContent />
+    </ErrorBoundary>
   );
 };
 
