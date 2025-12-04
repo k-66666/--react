@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, ErrorInfo, Component } from 'react';
+import React, { useState, useEffect, useMemo, ErrorInfo } from 'react';
 import { AppData, DailyLogEntry, Product, ViewMode, OperationLog } from './types';
 import { loadData, saveData, getFormattedDate, getTableDataForDate, getTodaysOperations, getLastClosingStock } from './services/storageService';
 import { InventoryTable } from './components/InventoryTable';
@@ -23,7 +23,7 @@ interface ErrorBoundaryState {
   hasError: boolean;
 }
 
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   public state: ErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(_: Error): ErrorBoundaryState {
@@ -311,6 +311,13 @@ const AppContent: React.FC = () => {
       products: prev.products.map(prod => prod.id === p.id ? p : prod)
     }));
   };
+  
+  const handleProductReorder = (newOrder: Product[]) => {
+    setData(prev => ({
+      ...prev,
+      products: newOrder
+    }));
+  };
 
   const handleProductDelete = (id: string) => {
     if (confirm('确认要删除这个商品吗？')) {
@@ -497,6 +504,7 @@ const AppContent: React.FC = () => {
                 onBatchEdit={handleBatchProductEdit}
                 stockMap={stockMap}
                 onUpdateStock={handleProductStockUpdate}
+                onReorder={handleProductReorder}
               />
             </div>
           ) : view === ViewMode.ANALYTICS ? (

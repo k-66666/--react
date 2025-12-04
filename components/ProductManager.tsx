@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Product } from '../types';
-import { Plus, Trash2, Edit2, Save, X, PackagePlus, FolderInput, CheckSquare, Square, Sparkles, ArrowUpDown } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, PackagePlus, FolderInput, CheckSquare, Square, Sparkles, ArrowUpDown, GripVertical, Ban } from 'lucide-react';
 import { playCommitSound, playFocusSound } from '../services/soundService';
 
 interface Props {
@@ -12,11 +12,12 @@ interface Props {
   onBatchEdit: (ids: string[], updates: Partial<Product>) => void;
   stockMap?: Record<string, number>;
   onUpdateStock?: (id: string, newStock: number) => void;
+  onReorder?: (newOrder: Product[]) => void;
 }
 
-type SortKey = 'name' | 'category' | 'price' | 'stock';
+type SortKey = 'default' | 'name' | 'category' | 'price' | 'stock';
 
-export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDelete, onBatchDelete, onBatchEdit, stockMap, onUpdateStock }) => {
+export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDelete, onBatchDelete, onBatchEdit, stockMap, onUpdateStock, onReorder }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Product> & { tempStock?: number }>({});
   const [isAdding, setIsAdding] = useState(false);
@@ -24,12 +25,18 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
   const [initialStock, setInitialStock] = useState<number>(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
-  // Sorting State
-  const [sortKey, setSortKey] = useState<SortKey>('category');
+  // Sorting State - 'default' means custom order (draggable)
+  const [sortKey, setSortKey] = useState<SortKey>('default');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  
+  // Drag State
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   // Sorting Logic
   const sortedProducts = useMemo(() => {
+    // If default sort, return original array order (to allow drag & drop)
+    if (sortKey === 'default') return products;
+
     return [...products].sort((a, b) => {
       let valA: any = a[sortKey as keyof Product] || '';
       let valB: any = b[sortKey as keyof Product] || '';
@@ -50,10 +57,56 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
-      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+      // Toggle direction if already sorting by this key
+      if (sortKey !== 'default') {
+          setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+      }
     } else {
       setSortKey(key);
       setSortDir('asc');
+    }
+  };
+
+  const resetSort = () => {
+    setSortKey('default');
+    playFocusSound();
+  };
+
+  // Drag Handlers
+  const handleDragStart = (e: React.DragEvent<HTMLTableRowElement>, index: number) => {
+    if (sortKey !== 'default') return; // Disable drag if sorted
+    setDraggedIndex(index);
+    // Required for Firefox
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", index.toString());
+    // Visual opacity
+    e.currentTarget.style.opacity = "0.5";
+  };
+
+  const handleDragEnd = (e: React.DragEvent<HTMLTableRowElement>) => {
+    e.currentTarget.style.opacity = "1";
+    setDraggedIndex(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLTableRowElement>) => {
+    if (sortKey !== 'default') return;
+    e.preventDefault(); // Allow dropping
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLTableRowElement>, targetIndex: number) => {
+    e.preventDefault();
+    if (sortKey !== 'default') return;
+    
+    if (draggedIndex === null || draggedIndex === targetIndex) return;
+
+    const newOrder = [...products];
+    const [movedItem] = newOrder.splice(draggedIndex, 1);
+    newOrder.splice(targetIndex, 0, movedItem);
+
+    if (onReorder) {
+        onReorder(newOrder);
+        playCommitSound();
     }
   };
 
@@ -140,12 +193,22 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
           <PackagePlus size={24} className="text-violet-600"/>
           商品档案管理
         </h2>
-        <button
-          onClick={() => { setIsAdding(true); playFocusSound(); }}
-          className="flex items-center gap-2 bg-violet-600 text-white px-5 py-2.5 rounded-2xl hover:bg-violet-700 text-sm font-bold transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-        >
-          <Plus size={18} /> 新增商品
-        </button>
+        <div className="flex gap-2">
+            {sortKey !== 'default' && (
+                <button 
+                  onClick={resetSort} 
+                  className="flex items-center gap-2 px-4 py-2 text-violet-600 bg-violet-50 hover:bg-violet-100 rounded-xl text-sm font-bold transition-colors"
+                >
+                    <ArrowUpDown size={16} /> 恢复默认排序 (以启用拖拽)
+                </button>
+            )}
+            <button
+            onClick={() => { setIsAdding(true); playFocusSound(); }}
+            className="flex items-center gap-2 bg-violet-600 text-white px-5 py-2.5 rounded-2xl hover:bg-violet-700 text-sm font-bold transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+            >
+            <Plus size={18} /> 新增商品
+            </button>
+        </div>
       </div>
 
       {/* Floating Batch Action Bar */}
@@ -212,9 +275,12 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
       )}
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left">
+        <table className="w-full text-sm text-left border-collapse">
           <thead className="bg-purple-50/50 text-violet-600 uppercase font-bold text-xs tracking-wider">
             <tr>
+              <th className="px-3 py-5 w-10 text-center text-purple-300">
+                 {sortKey === 'default' ? <ArrowUpDown size={16} /> : <Ban size={16} title="排序模式下禁止拖拽" />}
+              </th>
               <th className="px-6 py-5 w-10">
                 <button onClick={toggleSelectAll} className="text-violet-300 hover:text-violet-600 transition-colors">
                   {selectedIds.size > 0 && selectedIds.size === products.length ? <CheckSquare size={20} className="text-violet-600"/> : <Square size={20} />}
@@ -238,10 +304,23 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
             </tr>
           </thead>
           <tbody className="divide-y divide-purple-50">
-            {sortedProducts.map(p => {
+            {sortedProducts.map((p, index) => {
               const isSelected = selectedIds.has(p.id);
+              const isDraggable = sortKey === 'default';
+
               return (
-                <tr key={p.id} className={`hover:bg-purple-50/40 transition-colors ${isSelected ? 'bg-purple-50/80' : ''}`}>
+                <tr 
+                    key={p.id} 
+                    className={`transition-colors ${isSelected ? 'bg-purple-50/80' : 'hover:bg-purple-50/40'} ${isDraggable ? 'cursor-move' : ''}`}
+                    draggable={isDraggable}
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragOver={handleDragOver}
+                    onDragEnd={handleDragEnd}
+                    onDrop={(e) => handleDrop(e, index)}
+                >
+                  <td className="px-3 py-4 text-center text-slate-300">
+                    <GripVertical size={16} className={isDraggable ? 'hover:text-violet-500 cursor-grab active:cursor-grabbing' : 'opacity-30 cursor-not-allowed'} />
+                  </td>
                   <td className="px-6 py-4">
                      <button onClick={() => toggleSelect(p.id)} className="text-purple-200 hover:text-purple-600 transition-colors block">
                        {isSelected ? <CheckSquare size={20} className="text-violet-600" /> : <Square size={20} />}
