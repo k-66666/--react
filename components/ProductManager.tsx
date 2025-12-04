@@ -76,10 +76,8 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
   const handleDragStart = (e: React.DragEvent<HTMLTableRowElement>, index: number) => {
     if (sortKey !== 'default') return; // Disable drag if sorted
     setDraggedIndex(index);
-    // Required for Firefox
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", index.toString());
-    // Visual opacity
     e.currentTarget.style.opacity = "0.5";
   };
 
@@ -90,8 +88,23 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
 
   const handleDragOver = (e: React.DragEvent<HTMLTableRowElement>) => {
     if (sortKey !== 'default') return;
-    e.preventDefault(); // Allow dropping
+    e.preventDefault();
     e.dataTransfer.dropEffect = "move";
+
+    // Auto-Scroll Logic
+    const scrollContainer = e.currentTarget.closest('.overflow-auto');
+    if (scrollContainer) {
+        const { top, bottom } = scrollContainer.getBoundingClientRect();
+        const cursorY = e.clientY;
+        const triggerHeight = 150; 
+        const scrollSpeed = 15;    
+
+        if (cursorY < top + triggerHeight) {
+            scrollContainer.scrollTop -= scrollSpeed;
+        } else if (cursorY > bottom - triggerHeight) {
+            scrollContainer.scrollTop += scrollSpeed;
+        }
+    }
   };
 
   const handleDrop = (e: React.DragEvent<HTMLTableRowElement>, targetIndex: number) => {
@@ -151,11 +164,9 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
 
   const saveEdit = () => {
     if (editingId && editForm.name) {
-      // Save product details
       const { tempStock, ...productData } = editForm;
       onEdit(productData as Product);
 
-      // Save stock if changed
       if (tempStock !== undefined && stockMap && onUpdateStock) {
         const currentStock = stockMap[editingId] || 0;
         if (tempStock !== currentStock) {
@@ -171,7 +182,6 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
   const handleAdd = () => {
     if (newProduct.name) {
       onAdd({
-        // Robust ID generation
         id: `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
         name: newProduct.name!,
         unit: newProduct.unit || '瓶',
@@ -211,7 +221,6 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
         </div>
       </div>
 
-      {/* Floating Batch Action Bar */}
       {selectedIds.size > 0 && (
         <div className="absolute top-20 left-6 right-6 z-20 bg-slate-800 text-white rounded-2xl shadow-xl p-3 flex items-center justify-between animate-fade-in border border-slate-700">
           <div className="flex items-center gap-3 ml-2">
@@ -275,7 +284,7 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
       )}
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left border-collapse">
+        <table className="w-full text-sm text-left border-collapse border-spacing-y-2">
           <thead className="bg-purple-50/50 text-violet-600 uppercase font-bold text-xs tracking-wider">
             <tr>
               <th className="px-3 py-5 w-10 text-center text-purple-300">
@@ -296,7 +305,6 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
               <th className="px-6 py-5 text-right cursor-pointer hover:bg-purple-100/50 transition-colors" onClick={() => handleSort('price')}>
                 单价 <ArrowUpDown size={14} className={`inline ${sortKey === 'price' ? 'opacity-100' : 'opacity-20'}`} />
               </th>
-              {/* Added Stock Column */}
               <th className="px-6 py-5 text-center cursor-pointer hover:bg-purple-100/50 transition-colors" onClick={() => handleSort('stock')}>
                 当前库存 <ArrowUpDown size={14} className={`inline ${sortKey === 'stock' ? 'opacity-100' : 'opacity-20'}`} />
               </th>
@@ -311,7 +319,12 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
               return (
                 <tr 
                     key={p.id} 
-                    className={`transition-colors ${isSelected ? 'bg-purple-50/80' : 'hover:bg-purple-50/40'} ${isDraggable ? 'cursor-move' : ''}`}
+                    className={`
+                      transition-all duration-200 ease-out 
+                      ${isSelected ? 'bg-purple-50/80' : 'hover:bg-purple-50/40'} 
+                      ${isDraggable ? 'cursor-move' : ''}
+                      hover:-translate-y-0.5 hover:shadow-md hover:z-10 relative
+                    `}
                     draggable={isDraggable}
                     onDragStart={(e) => handleDragStart(e, index)}
                     onDragOver={handleDragOver}
@@ -332,7 +345,6 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
                       <td className="px-6 py-4"><input className="border-2 border-purple-200 rounded-lg px-2 py-2 w-full focus:outline-none focus:border-violet-400" value={editForm.category} onChange={e => setEditForm({...editForm, category: e.target.value})} /></td>
                       <td className="px-6 py-4"><input className="border-2 border-purple-200 rounded-lg px-2 py-2 w-20 focus:outline-none focus:border-violet-400" value={editForm.unit} onChange={e => setEditForm({...editForm, unit: e.target.value})} /></td>
                       <td className="px-6 py-4 text-right"><input type="number" className="border-2 border-purple-200 rounded-lg px-2 py-2 w-24 text-right focus:outline-none focus:border-violet-400" value={editForm.price} onChange={e => setEditForm({...editForm, price: parseFloat(e.target.value)})} /></td>
-                      {/* Stock Edit Input */}
                       <td className="px-6 py-4 text-center">
                         <input type="number" className="border-2 border-orange-200 rounded-lg px-2 py-2 w-24 text-center font-bold text-orange-600 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100" value={editForm.tempStock} onChange={e => setEditForm({...editForm, tempStock: parseFloat(e.target.value)})} />
                       </td>
@@ -349,7 +361,6 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
                       <td className="px-6 py-4 text-slate-500"><span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold border border-purple-200">{p.category}</span></td>
                       <td className="px-6 py-4 text-slate-500">{p.unit}</td>
                       <td className="px-6 py-4 text-right font-medium text-slate-600 text-base font-mono">¥{p.price}</td>
-                      {/* Stock Display */}
                       <td className="px-6 py-4 text-center font-mono font-bold text-lg text-violet-600">
                         {stockMap ? (stockMap[p.id] || 0) : '-'}
                       </td>

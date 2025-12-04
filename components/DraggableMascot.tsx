@@ -1,6 +1,15 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { playRandomMeow } from '../services/soundService';
+
+interface Particle {
+  id: string;
+  type: string;
+  left: number;
+  rotation: number;
+  scale: number;
+  duration: number;
+  color: string;
+}
 
 export const DraggableMascot: React.FC = () => {
   // Drag State
@@ -9,7 +18,7 @@ export const DraggableMascot: React.FC = () => {
   const dragOffset = useRef({ x: 0, y: 0 });
 
   // Animation State
-  const [hearts, setHearts] = useState<{id: string, left: number, animationDuration: number}[]>([]);
+  const [particles, setParticles] = useState<Particle[]>([]);
   const [isJelly, setIsJelly] = useState(false);
   const [mascotMsg, setMascotMsg] = useState("");
   const [showBubble, setShowBubble] = useState(false);
@@ -48,21 +57,35 @@ export const DraggableMascot: React.FC = () => {
 
   // Interaction Handler
   const handleClick = () => {
-    if (isDragging) return; // Don't trigger click if dragging
+    if (isDragging) return; 
 
     playRandomMeow();
     
-    // Heart Particles
-    const newHeart = {
-      // Use robust random ID to prevent key collisions
-      id: `${Date.now()}-${Math.random()}`,
-      left: Math.random() * 60 - 30,
-      animationDuration: 1 + Math.random()
-    };
-    setHearts(prev => [...prev, newHeart]);
+    // Generate Random Particles
+    const types = ['❤️', '⭐', '✨', '🎵', '🌸', '💖'];
+    const colors = ['text-red-500', 'text-yellow-400', 'text-purple-400', 'text-blue-400', 'text-pink-400'];
+    
+    const newParticles: Particle[] = [];
+    const count = 3 + Math.floor(Math.random() * 3); // 3 to 5 particles
+
+    for (let i = 0; i < count; i++) {
+        newParticles.push({
+            id: `${Date.now()}-${Math.random()}`,
+            type: types[Math.floor(Math.random() * types.length)],
+            left: (Math.random() * 80) - 40, // -40 to 40px spread
+            rotation: (Math.random() * 60) - 30,
+            scale: 0.8 + Math.random() * 0.7,
+            duration: 1 + Math.random() * 0.8,
+            color: colors[Math.floor(Math.random() * colors.length)]
+        });
+    }
+
+    setParticles(prev => [...prev, ...newParticles]);
+    
+    // Cleanup particles
     setTimeout(() => {
-       setHearts(prev => prev.filter(h => h.id !== newHeart.id));
-    }, 1500);
+       setParticles(prev => prev.filter(p => !newParticles.find(np => np.id === p.id)));
+    }, 2000);
 
     // Jelly Animation
     setIsJelly(true);
@@ -74,7 +97,8 @@ export const DraggableMascot: React.FC = () => {
       "今天也超级可爱!", "我在陪你哦~", "记得喝水水", 
       "mua~ 💋", "辛苦啦宝~", "想吃小鱼干...", "贴贴~",
       "下班带我回家?", "永远陪着你", "摸摸头~", "你是我的骄傲",
-      "看见你就开心!", "呼噜噜~ (舒服)", "最喜欢你了!"
+      "看见你就开心!", "呼噜噜~ (舒服)", "最喜欢你了!", 
+      "加油加油!", "我们要发财啦!", "不要太累哦~"
     ];
     setMascotMsg(msgs[Math.floor(Math.random() * msgs.length)]);
     setShowBubble(true);
@@ -83,14 +107,14 @@ export const DraggableMascot: React.FC = () => {
 
   return (
     <div 
-      className="fixed z-[1000] cursor-grab active:cursor-grabbing select-none"
+      className="fixed z-[1000] cursor-grab active:cursor-grabbing select-none touch-none"
       style={{ left: position.x, top: position.y }}
       onMouseDown={handleMouseDown}
     >
       <div className="relative group">
-        {/* Cat Image - Using a 3D Fluent Emoji Image to ensure color on all OS */}
+        {/* Cat Image */}
         <div 
-           className={`w-24 h-24 filter drop-shadow-2xl hover:scale-110 transition-transform duration-200 ${isJelly ? 'animate-jelly' : 'animate-float'}`} 
+           className={`w-28 h-28 filter drop-shadow-2xl hover:drop-shadow-[0_10px_35px_rgba(167,139,250,0.5)] transition-all duration-300 ${isJelly ? 'animate-jelly' : 'animate-float'} hover:scale-105`} 
            onClick={handleClick}
         >
           <img 
@@ -101,21 +125,28 @@ export const DraggableMascot: React.FC = () => {
           />
         </div>
 
-        {/* Hearts */}
-        {hearts.map(heart => (
+        {/* Particles */}
+        {particles.map(p => (
           <div 
-             key={heart.id} 
-             className="absolute text-2xl pointer-events-none animate-float-up z-10 top-0" 
-             style={{ left: `${heart.left}px`, animationDuration: `${heart.animationDuration}s` }}
+             key={p.id} 
+             className={`absolute pointer-events-none animate-float-up-sway font-bold ${p.color}`} 
+             style={{ 
+                 left: '50%',
+                 top: '10%',
+                 marginLeft: `${p.left}px`,
+                 fontSize: `${24 * p.scale}px`,
+                 animationDuration: `${p.duration}s`,
+                 transform: `rotate(${p.rotation}deg)`
+             }}
           >
-            ❤️
+            {p.type}
           </div>
         ))}
 
         {/* Message Bubble */}
         {showBubble && (
           <div 
-            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white/95 backdrop-blur-sm px-6 py-3 rounded-2xl rounded-bl-none shadow-xl border border-purple-100 text-sm font-bold text-violet-600 whitespace-nowrap animate-pop-in z-30"
+            className="absolute bottom-[110%] left-1/2 -translate-x-1/2 mb-2 bg-white/95 backdrop-blur-md px-6 py-3 rounded-2xl rounded-bl-sm shadow-xl shadow-purple-200/50 border border-purple-100 text-sm font-bold text-violet-600 whitespace-nowrap animate-pop-in z-30 transform origin-bottom-left"
           >
             {mascotMsg}
             <div className="absolute -bottom-1.5 left-4 w-3 h-3 bg-white border-b border-r border-purple-100 transform rotate-45"></div>

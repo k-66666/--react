@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { TableRowData, DailyLogEntry } from '../types';
 import { playFocusSound, playCommitSound } from '../services/soundService';
@@ -114,7 +113,7 @@ export const InventoryTable: React.FC<Props> = ({ data, onUpdate, dateStr }) => 
   return (
     <div className="flex flex-col h-full bg-white/70 backdrop-blur-xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden ring-1 ring-purple-50">
       <div className="flex-1 overflow-auto custom-scrollbar relative">
-        <table className="w-full text-left whitespace-nowrap">
+        <table className="w-full text-left whitespace-nowrap border-separate border-spacing-y-0">
           <thead className="bg-purple-50/90 text-purple-900 font-bold sticky top-0 z-10 backdrop-blur-sm text-lg shadow-sm">
             <tr>
               <th className="px-4 py-5 w-16 text-center sticky left-0 bg-purple-50 z-20">#</th>
@@ -164,9 +163,12 @@ export const InventoryTable: React.FC<Props> = ({ data, onUpdate, dateStr }) => 
               const diff = hasCheck ? (row.manualCheck! - row.calculatedStock) : 0;
               
               return (
-                <tr key={row.id} className="hover:bg-purple-50/30 transition-colors group">
-                  <td className="px-4 py-3 text-center text-purple-300 font-medium sticky left-0 bg-white group-hover:bg-purple-50/30 transition-colors border-r border-transparent group-hover:border-purple-50">{index + 1}</td>
-                  <td className="px-6 py-3 font-medium text-slate-700 sticky left-16 bg-white group-hover:bg-purple-50/30 transition-colors border-r border-transparent group-hover:border-purple-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] text-lg">
+                <tr 
+                   key={row.id} 
+                   className="group hover:bg-white hover:shadow-[0_4px_20px_rgba(139,92,246,0.08)] hover:-translate-y-0.5 transition-all duration-200 ease-out relative z-0 hover:z-10"
+                >
+                  <td className="px-4 py-3 text-center text-purple-300 font-medium sticky left-0 bg-transparent group-hover:bg-white transition-colors border-r border-transparent group-hover:border-purple-50">{index + 1}</td>
+                  <td className="px-6 py-3 font-medium text-slate-700 sticky left-16 bg-transparent group-hover:bg-white transition-colors border-r border-transparent group-hover:border-purple-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] text-lg">
                     <div className="flex items-center gap-3">
                       {row.name}
                       {lowStock && <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-400 animate-pulse shadow-sm" title="库存紧张"></span>}
@@ -188,17 +190,17 @@ export const InventoryTable: React.FC<Props> = ({ data, onUpdate, dateStr }) => 
                   </td>
 
                   {/* Inputs - Larger Hit Area */}
-                  <td className="px-1 py-1 bg-blue-50/20">
+                  <td className="px-1 py-1 bg-blue-50/20 group-hover:bg-blue-50/40 transition-colors">
                     <InputCell value={row.purchaseIn} onChange={(v, pv) => onUpdate(row.id, 'purchaseIn', v, pv)} className="text-blue-600 font-bold" />
                   </td>
-                  <td className="px-1 py-1 bg-emerald-50/20">
+                  <td className="px-1 py-1 bg-emerald-50/20 group-hover:bg-emerald-50/40 transition-colors">
                     <InputCell value={row.salesOut} onChange={(v, pv) => onUpdate(row.id, 'salesOut', v, pv)} className="text-emerald-600 font-bold" />
                   </td>
                   <td className="px-1 py-1">
                     <InputCell value={row.giftOut} onChange={(v, pv) => onUpdate(row.id, 'giftOut', v, pv)} className="text-orange-600" />
                   </td>
                   {/* Deposit (Previously Return) - Now Indigo */}
-                  <td className="px-1 py-1 bg-indigo-50/20">
+                  <td className="px-1 py-1 bg-indigo-50/20 group-hover:bg-indigo-50/40 transition-colors">
                     <InputCell value={row.returnIn} onChange={(v, pv) => onUpdate(row.id, 'returnIn', v, pv)} className="text-indigo-600 font-bold" />
                   </td>
                   <td className="px-1 py-1">
@@ -206,12 +208,12 @@ export const InventoryTable: React.FC<Props> = ({ data, onUpdate, dateStr }) => 
                   </td>
 
                   {/* Calculated Stock */}
-                  <td className={`px-4 py-3 text-center font-bold text-2xl font-mono border-x border-violet-100 bg-violet-50/30 ${row.calculatedStock < 0 ? 'text-red-500' : 'text-violet-700'}`}>
+                  <td className={`px-4 py-3 text-center font-bold text-2xl font-mono border-x border-violet-100 bg-violet-50/30 group-hover:bg-violet-50/50 transition-colors ${row.calculatedStock < 0 ? 'text-red-500' : 'text-violet-700'}`}>
                     {row.calculatedStock}
                   </td>
 
                   {/* Manual Check Input */}
-                  <td className="px-1 py-1 bg-purple-100/30 border-l border-purple-100">
+                  <td className="px-1 py-1 bg-purple-100/30 group-hover:bg-purple-100/50 border-l border-purple-100 transition-colors">
                      <InputCell 
                         value={row.manualCheck ?? ''} 
                         onChange={(v, pv) => onUpdate(row.id, 'manualCheck', v === '' ? undefined : v, pv)} 
@@ -220,7 +222,7 @@ export const InventoryTable: React.FC<Props> = ({ data, onUpdate, dateStr }) => 
                   </td>
 
                   {/* Discrepancy Result */}
-                  <td className="px-4 py-3 text-center bg-slate-50/30">
+                  <td className="px-4 py-3 text-center bg-slate-50/30 group-hover:bg-slate-50/60 transition-colors">
                      {!hasCheck ? (
                         <span className="text-slate-300">-</span>
                      ) : diff === 0 ? (
