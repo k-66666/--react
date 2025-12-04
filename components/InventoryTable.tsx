@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { TableRowData, DailyLogEntry } from '../types';
 import { playFocusSound, playCommitSound } from '../services/soundService';
-import { ArrowUpDown, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ArrowUpDown, AlertCircle, CheckCircle2, RefreshCcw } from 'lucide-react';
 
 interface Props {
   data: TableRowData[];
@@ -140,7 +140,7 @@ export const InventoryTable: React.FC<Props> = ({ data, onUpdate, dateStr }) => 
                 销售 <SortIcon active={sortKey === 'salesOut'} />
               </th>
               <th className="px-2 py-5 w-20 text-center text-orange-600">赠送</th>
-              <th className="px-2 py-5 w-20 text-center text-orange-600">回馈</th>
+              <th className="px-2 py-5 w-20 text-center text-indigo-600 bg-indigo-50/50 rounded-t-xl mx-1">寄存</th>
               <th className="px-2 py-5 w-20 text-center text-orange-600">套餐</th>
               <th 
                  className="px-4 py-5 w-32 text-center text-violet-700 bg-violet-100/50 text-xl border-x border-violet-200 cursor-pointer hover:bg-violet-200/50"
@@ -175,9 +175,16 @@ export const InventoryTable: React.FC<Props> = ({ data, onUpdate, dateStr }) => 
                   <td className="px-4 py-3 text-center text-slate-400 text-base">{row.unit}</td>
                   <td className="px-4 py-3 text-right text-slate-500 font-mono text-lg">¥{row.price}</td>
                   
-                  {/* Read Only Opening Stock */}
-                  <td className="px-4 py-3 text-slate-400 text-center font-medium text-xl font-mono">
-                    {row.openingStock}
+                  {/* Opening Stock with Manual Override Indicator */}
+                  <td className="px-4 py-3 text-center font-medium text-xl font-mono relative">
+                    <span className={`${row.isManualOpening ? 'text-violet-600 border-b-2 border-violet-300' : 'text-slate-400'}`}>
+                        {row.openingStock}
+                    </span>
+                    {row.isManualOpening && (
+                        <div className="absolute top-1 right-2 group-hover:opacity-100 opacity-0 transition-opacity">
+                            <RefreshCcw size={10} className="text-violet-400" />
+                        </div>
+                    )}
                   </td>
 
                   {/* Inputs - Larger Hit Area */}
@@ -190,8 +197,9 @@ export const InventoryTable: React.FC<Props> = ({ data, onUpdate, dateStr }) => 
                   <td className="px-1 py-1">
                     <InputCell value={row.giftOut} onChange={(v, pv) => onUpdate(row.id, 'giftOut', v, pv)} className="text-orange-600" />
                   </td>
-                  <td className="px-1 py-1">
-                    <InputCell value={row.returnIn} onChange={(v, pv) => onUpdate(row.id, 'returnIn', v, pv)} className="text-orange-600" />
+                  {/* Deposit (Previously Return) - Now Indigo */}
+                  <td className="px-1 py-1 bg-indigo-50/20">
+                    <InputCell value={row.returnIn} onChange={(v, pv) => onUpdate(row.id, 'returnIn', v, pv)} className="text-indigo-600 font-bold" />
                   </td>
                   <td className="px-1 py-1">
                     <InputCell value={row.packageGiftOut} onChange={(v, pv) => onUpdate(row.id, 'packageGiftOut', v, pv)} className="text-orange-600" />

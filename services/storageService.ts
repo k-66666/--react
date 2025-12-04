@@ -10,7 +10,7 @@ const DEFAULT_PRODUCTS: Product[] = [
   { id: '9', name: '特级赤夏珠', unit: '瓶', price: 0, category: '酒水' },
   
   // 10-14: Beer
-  { id: '10', name: '勇闯天涯', unit: '瓶', price: 10, category: '啤酒' }, // Price inferred or default
+  { id: '10', name: '勇闯天涯', unit: '瓶', price: 55, category: '啤酒' }, 
   { id: '11', name: '雪花纯生', unit: '瓶', price: 18, category: '啤酒' },
   { id: '12', name: '漓泉 1998', unit: '瓶', price: 18, category: '啤酒' },
   { id: '13', name: '漓泉', unit: '瓶', price: 16, category: '啤酒' },
@@ -116,8 +116,16 @@ export const loadData = (): AppData => {
     const serialized = localStorage.getItem(STORAGE_KEY);
     if (!serialized) return DEFAULT_DATA;
     const parsed = JSON.parse(serialized);
-    // Migration: ensure operations exists
     if (!parsed.operations) parsed.operations = [];
+    // Ensure product list is up to date with defaults if missing
+    if (!parsed.products || parsed.products.length < DEFAULT_PRODUCTS.length) {
+       // Merge defaults but preserve existing IDs/changes if possible
+       DEFAULT_PRODUCTS.forEach(def => {
+          if (!parsed.products.find((p: Product) => p.id === def.id)) {
+             parsed.products.push(def);
+          }
+       });
+    }
     return parsed;
   } catch (e) {
     console.error("Failed to load data", e);
@@ -146,56 +154,104 @@ export const getPreviousDate = (dateString: string): string => {
   return getFormattedDate(date);
 };
 
+// Helper: Find the most recent closing stock from history (skipping empty days)
+export const getLastClosingStock = (data: AppData, productId: string, beforeDate: string): number => {
+  // Get all dates that have logs, sorted descending
+  const dates = Object.keys(data.logs).filter(d => d < beforeDate).sort().reverse();
+  
+  for (const date of dates) {
+    const log = data.logs[date][productId];
+    if (log) {
+      // Determine what the opening stock was for this day
+      // Priority: Manual Override > Stored Opening
+      const effectiveOpening = (log.manualOpeningStock !== undefined && log.manualOpeningStock !== null)
+          ? Number(log.manualOpeningStock)
+          : Number(log.openingStock);
+
+      // Calculate closing stock for that day
+      // Closing = Opening + Purchase + Return - Sales - Gift - Package
+      const closing = effectiveOpening + Number(log.purchaseIn) + Number(log.returnIn) 
+                    - Number(log.salesOut) - Number(log.giftOut) - Number(log.packageGiftOut);
+      
+      // If there was a manual check that day, it overrides the calculated closing
+      // (This serves as the starting point for the next day)
+      if (log.manualCheck !== undefined && log.manualCheck !== null) {
+        return Number(log.manualCheck);
+      }
+      return closing;
+    }
+  }
+  
+  // If no history found, return 0
+  return 0;
+};
+
 export const getTableDataForDate = (data: AppData, dateStr: string): TableRowData[] => {
-  const prevDateStr = getPreviousDate(dateStr);
   const todaysLog = data.logs[dateStr] || {};
-  const yesterdaysLog = data.logs[prevDateStr] || {};
 
   return data.products.map(product => {
     let openingStock = 0;
+    let isManualOpening = false;
     
-    const yLog = yesterdaysLog[product.id];
-    if (yLog) {
-       const yCalculated = yLog.openingStock + yLog.purchaseIn + yLog.returnIn - yLog.salesOut - yLog.giftOut - yLog.packageGiftOut;
-       // If manual check exists for yesterday, it overrides the calculated stock for today's opening
-       openingStock = yLog.manualCheck !== undefined && yLog.manualCheck !== null ? yLog.manualCheck : yCalculated;
+    // Logic:
+    // 1. If we have an EXPLICIT manual opening stock for today (user set it), use it.
+    // 2. Else, if we have a standard log, use it (but check if it was manual).
+    // 3. Else, inherit from history.
+    
+    const productLog = todaysLog[product.id];
+
+    if (productLog && productLog.manualOpeningStock !== undefined && productLog.manualOpeningStock !== null) {
+        // High priority: User manually set the opening stock for today
+        openingStock = Number(productLog.manualOpeningStock);
+        isManualOpening = true;
+    } else if (productLog && productLog.openingStock !== undefined) {
+        // Standard log exists
+        openingStock = Number(productLog.openingStock);
+    } else {
+        // No log for today, calculate from history
+        openingStock = getLastClosingStock(data, product.id, dateStr);
     }
 
-    const entry: DailyLogEntry = todaysLog[product.id] || {
+    const entry: DailyLogEntry = productLog || {
       productId: product.id,
-      openingStock: openingStock, 
+      openingStock: openingStock,
       purchaseIn: 0,
       salesOut: 0,
       giftOut: 0,
-      returnIn: 0,
+      returnIn: 0, // Deposit
       packageGiftOut: 0,
       notes: '',
       manualCheck: undefined
     };
+    
+    // Strict Number casting
+    const o = openingStock;
+    const p = Number(entry.purchaseIn);
+    const r = Number(entry.returnIn); // Deposit (Positive)
+    const s = Number(entry.salesOut);
+    const g = Number(entry.giftOut);
+    const pg = Number(entry.packageGiftOut);
 
-    // Always ensure opening stock is fresh from yesterday logic if not explicitly overridden (though our logic above handles it)
-    if (!todaysLog[product.id] && yLog) {
-      entry.openingStock = openingStock;
-    }
-
-    const calculatedStock = entry.openingStock + entry.purchaseIn + entry.returnIn - entry.salesOut - entry.giftOut - entry.packageGiftOut;
+    // FORMULA: Opening + Purchase + Deposit - Sales - Gift - Package
+    const calculatedStock = o + p + r - s - g - pg;
     
     // Discrepancy = Manual - Calculated
     const discrepancy = (entry.manualCheck !== undefined && entry.manualCheck !== null) 
-      ? entry.manualCheck - calculatedStock 
+      ? Number(entry.manualCheck) - calculatedStock 
       : 0;
 
     return {
       ...product,
       ...entry,
+      openingStock: o, 
       calculatedStock,
-      discrepancy
+      discrepancy,
+      isManualOpening
     };
   });
 };
 
 export const getTodaysOperations = (data: AppData, dateStr: string): OperationLog[] => {
-  // Return logs that match the date string (approximate, since logs store timestamp)
   return data.operations
     .filter(op => getFormattedDate(new Date(op.timestamp)) === dateStr)
     .sort((a, b) => b.timestamp - a.timestamp);

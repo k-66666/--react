@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { playRandomMeow } from '../services/soundService';
 
 export const DraggableMascot: React.FC = () => {
   // Drag State
-  const [position, setPosition] = useState({ x: window.innerWidth - 100, y: window.innerHeight - 150 });
+  const [position, setPosition] = useState({ x: window.innerWidth - 120, y: window.innerHeight - 180 });
   const [isDragging, setIsDragging] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
 
@@ -86,13 +87,18 @@ export const DraggableMascot: React.FC = () => {
       style={{ left: position.x, top: position.y }}
       onMouseDown={handleMouseDown}
     >
-      <div className="relative">
-        {/* Cat Emoji */}
+      <div className="relative group">
+        {/* Cat Image - Using a 3D Fluent Emoji Image to ensure color on all OS */}
         <div 
-           className={`text-7xl filter drop-shadow-2xl hover:scale-110 transition-transform duration-200 ${isJelly ? 'animate-jelly' : 'animate-float'}`} 
+           className={`w-24 h-24 filter drop-shadow-2xl hover:scale-110 transition-transform duration-200 ${isJelly ? 'animate-jelly' : 'animate-float'}`} 
            onClick={handleClick}
         >
-          🐱
+          <img 
+            src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Animals/Cat%20Face.png" 
+            alt="Cute Cat Mascot"
+            className="w-full h-full object-contain"
+            draggable={false}
+          />
         </div>
 
         {/* Hearts */}
@@ -109,7 +115,7 @@ export const DraggableMascot: React.FC = () => {
         {/* Message Bubble */}
         {showBubble && (
           <div 
-            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 bg-white/95 backdrop-blur-sm px-6 py-3 rounded-2xl rounded-bl-none shadow-xl border border-purple-100 text-sm font-bold text-violet-600 whitespace-nowrap animate-pop-in z-30"
+            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white/95 backdrop-blur-sm px-6 py-3 rounded-2xl rounded-bl-none shadow-xl border border-purple-100 text-sm font-bold text-violet-600 whitespace-nowrap animate-pop-in z-30"
           >
             {mascotMsg}
             <div className="absolute -bottom-1.5 left-4 w-3 h-3 bg-white border-b border-r border-purple-100 transform rotate-45"></div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { OperationLog } from '../types';
-import { ArrowDownLeft, ArrowUpRight, CheckCircle, Package, Gift, RefreshCcw, Search, Clock } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, CheckCircle, Package, Gift, RefreshCcw, Search, Clock, ArrowDown } from 'lucide-react';
 
 interface Props {
   logs: OperationLog[];
@@ -13,7 +13,7 @@ export const OperationHistory: React.FC<Props> = ({ logs }) => {
       case 'SALE': return <ArrowUpRight className="text-emerald-500" size={20} />;
       case 'CHECK': return <CheckCircle className="text-purple-500" size={20} />;
       case 'GIFT': return <Gift className="text-orange-500" size={20} />;
-      case 'RETURN': return <RefreshCcw className="text-amber-500" size={20} />;
+      case 'RETURN': return <ArrowDown className="text-indigo-500" size={20} />; // Deposit Icon
       default: return <Package className="text-slate-400" size={20} />;
     }
   };
@@ -24,7 +24,7 @@ export const OperationHistory: React.FC<Props> = ({ logs }) => {
       case 'SALE': return '销售';
       case 'CHECK': return '盘点';
       case 'GIFT': return '赠送';
-      case 'RETURN': return '回馈/退货';
+      case 'RETURN': return '寄存'; // Renamed to Deposit
       case 'PACKAGE': return '套餐';
       default: return '修改';
     }
@@ -36,7 +36,7 @@ export const OperationHistory: React.FC<Props> = ({ logs }) => {
       case 'SALE': return 'bg-emerald-50 text-emerald-700 border-emerald-100';
       case 'CHECK': return 'bg-purple-50 text-purple-700 border-purple-100';
       case 'GIFT': return 'bg-orange-50 text-orange-700 border-orange-100';
-      case 'RETURN': return 'bg-amber-50 text-amber-700 border-amber-100';
+      case 'RETURN': return 'bg-indigo-50 text-indigo-700 border-indigo-100'; // Deposit Color
       default: return 'bg-slate-50 text-slate-700 border-slate-100';
     }
   };

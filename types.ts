@@ -8,11 +8,12 @@ export interface Product {
 
 export interface DailyLogEntry {
   productId: string;
-  openingStock: number; // Yesterday's closing
+  openingStock: number; // Yesterday's closing (Calculated or inherited)
+  manualOpeningStock?: number; // Priority Override: Manually set opening stock (New product / Stock correction)
   purchaseIn: number;   // Today's purchase
   salesOut: number;     // Sales
   giftOut: number;      // Gifts given
-  returnIn: number;     // Customer returns
+  returnIn: number;     // Customer returns / Deposit
   packageGiftOut: number; // Package gifts
   notes: string;
   manualCheck?: number; // Physical count if different
@@ -41,6 +42,7 @@ export interface AppData {
 export interface TableRowData extends Product, DailyLogEntry {
   calculatedStock: number; // opening + purchase + return - sales - gift - packageGift
   discrepancy: number; // calculated - manualCheck (if manualCheck exists)
+  isManualOpening?: boolean; // UI Flag: Was the opening stock manually set?
 }
 
 export enum ViewMode {

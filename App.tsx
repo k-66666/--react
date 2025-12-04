@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, Component, ErrorInfo } from 'react';
+import React, { useState, useEffect, useMemo, ErrorInfo, Component } from 'react';
 import { AppData, DailyLogEntry, Product, ViewMode, OperationLog } from './types';
-import { loadData, saveData, getFormattedDate, getTableDataForDate, getTodaysOperations } from './services/storageService';
+import { loadData, saveData, getFormattedDate, getTableDataForDate, getTodaysOperations, getLastClosingStock } from './services/storageService';
 import { InventoryTable } from './components/InventoryTable';
 import { ProductManager } from './components/ProductManager';
 import { Settings } from './components/Settings';
@@ -15,13 +15,18 @@ import { playFocusSound, playCommitSound } from './services/soundService';
 import * as XLSX from 'xlsx';
 
 // Error Boundary to catch crashes
-class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean }> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
+interface ErrorBoundaryProps {
+  children?: React.ReactNode;
+}
 
-  static getDerivedStateFromError(_: Error) {
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  public state: ErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(_: Error): ErrorBoundaryState {
     return { hasError: true };
   }
 
@@ -166,7 +171,7 @@ const AppContent: React.FC = () => {
       '今日进货': row.purchaseIn,
       '销售': row.salesOut,
       '赠送': row.giftOut,
-      '回馈': row.returnIn,
+      '寄存': row.returnIn, // Renamed in Export
       '套餐赠送': row.packageGiftOut,
       '计算库存': row.calculatedStock,
       '实际盘点': row.manualCheck ?? '',
@@ -182,8 +187,25 @@ const AppContent: React.FC = () => {
   const updateLog = (productId: string, field: keyof DailyLogEntry, value: any, previousValue?: any) => {
     setData(prev => {
       const dayLog = prev.logs[currentDate] || {};
-      const productLog = dayLog[productId] || { productId, openingStock: 0, purchaseIn: 0, salesOut: 0, giftOut: 0, returnIn: 0, packageGiftOut: 0, notes: '', manualCheck: undefined };
+      let productLog = dayLog[productId];
       
+      // If creating a new log for today, ensure we properly fetch the last closing stock
+      // instead of defaulting openingStock to 0.
+      if (!productLog) {
+         const derivedOpening = getLastClosingStock(prev, productId, currentDate);
+         productLog = {
+            productId,
+            openingStock: derivedOpening,
+            purchaseIn: 0,
+            salesOut: 0,
+            giftOut: 0,
+            returnIn: 0,
+            packageGiftOut: 0,
+            notes: '',
+            manualCheck: undefined
+         };
+      }
+
       const newLogs = {
           ...prev.logs,
           [currentDate]: {
@@ -196,21 +218,21 @@ const AppContent: React.FC = () => {
       };
 
       let newOperations = prev.operations || [];
-      if (previousValue !== undefined && previousValue !== value) {
+      // Don't log internal field updates like manualOpeningStock unless necessary, or filter them in display
+      if (previousValue !== undefined && previousValue !== value && field !== 'manualOpeningStock' && field !== 'openingStock') {
          const product = prev.products.find(p => p.id === productId);
          if (product) {
            let type: OperationLog['type'] = 'MODIFY';
            if (field === 'purchaseIn') type = 'STOCK_IN';
            if (field === 'salesOut') type = 'SALE';
            if (field === 'giftOut') type = 'GIFT';
-           if (field === 'returnIn') type = 'RETURN';
+           if (field === 'returnIn') type = 'RETURN'; // This is 'Deposit' (寄存)
            if (field === 'packageGiftOut') type = 'PACKAGE';
            if (field === 'manualCheck') type = 'CHECK';
            
            const delta = typeof value === 'number' && typeof previousValue === 'number' ? value - previousValue : undefined;
 
            const opLog: OperationLog = {
-             // Robust ID generation to avoid duplicate keys during rapid updates
              id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
              timestamp: Date.now(),
              type,
@@ -231,30 +253,44 @@ const AppContent: React.FC = () => {
   };
   
   // Handler to update stock from Product Manager
-  const handleProductStockUpdate = (productId: string, newStock: number) => {
+  const handleProductStockUpdate = (productId: string, targetStock: number) => {
     const currentRow = tableData.find(r => r.id === productId);
     if (!currentRow) return;
-
-    const currentCalculated = currentRow.calculatedStock;
-    const diff = newStock - currentCalculated;
     
-    // We adjust the opening stock for today to align the final calculated stock
-    // New Opening = Old Opening + Diff
-    const newOpening = currentRow.openingStock + diff;
+    // Formula: Current = Opening + P + D - S - G - PG
+    // We want to find a NewOpening such that:
+    // Target = NewOpening + P + D - S - G - PG
+    // So: NewOpening = Target - P - D + S + G + PG
     
-    updateLog(productId, 'openingStock', newOpening, currentRow.openingStock);
+    const p = Number(currentRow.purchaseIn);
+    const d = Number(currentRow.returnIn); // Deposit
+    const s = Number(currentRow.salesOut);
+    const g = Number(currentRow.giftOut);
+    const pg = Number(currentRow.packageGiftOut);
+    
+    // Reverse calculation
+    const newOpening = targetStock - p - d + s + g + pg;
+    
+    // Update the MANUAL opening stock log (Highest Priority)
+    updateLog(productId, 'manualOpeningStock', newOpening);
+    // Also update standard openingStock for data consistency viewing elsewhere
+    updateLog(productId, 'openingStock', newOpening);
   };
 
   const handleProductAdd = (p: Product, initialStock: number) => {
     setData(prev => {
       const newData = { ...prev, products: [...prev.products, p] };
-      if (initialStock > 0) {
+      // Always initialize log for new product if stock > 0 OR if it's just created to ensure state is clear
+      // If initialStock > 0, we treat it as a Manual Override for today.
+      if (initialStock >= 0) {
         const dayLog = newData.logs[currentDate] || {};
         newData.logs[currentDate] = {
           ...dayLog,
           [p.id]: {
              productId: p.id,
+             // Set BOTH to ensure it sticks
              openingStock: initialStock,
+             manualOpeningStock: initialStock, 
              purchaseIn: 0,
              salesOut: 0,
              giftOut: 0,
