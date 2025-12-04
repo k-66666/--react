@@ -10,7 +10,8 @@ import { OperationHistory } from './components/OperationHistory';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { WeatherWidget } from './components/WeatherWidget';
 import { DraggableMascot } from './components/DraggableMascot';
-import { LayoutDashboard, Package, Calendar, Settings as SettingsIcon, ChevronLeft, ChevronRight, Sun, Moon, CloudSun, Clock, Star, PieChart, History as HistoryIcon, Search, Download, TrendingUp, Cat, AlertTriangle } from 'lucide-react';
+import { JokeWidget } from './components/JokeWidget';
+import { LayoutDashboard, Package, Calendar, Settings as SettingsIcon, ChevronLeft, ChevronRight, Clock, PieChart, History as HistoryIcon, Search, Download, TrendingUp, Cat, AlertTriangle } from 'lucide-react';
 import { playFocusSound, playCommitSound } from './services/soundService';
 import * as XLSX from 'xlsx';
 
@@ -62,7 +63,6 @@ const AppContent: React.FC = () => {
   const [data, setData] = useState<AppData>(loadData());
   const [currentDate, setCurrentDate] = useState<string>(getFormattedDate(new Date()));
   const [view, setView] = useState<ViewMode>(ViewMode.INVENTORY);
-  const [greeting, setGreeting] = useState<{text: string, icon: React.ReactNode}>({ text: '早安', icon: <Sun /> });
   const [countdown, setCountdown] = useState<string>('');
   const [workProgress, setWorkProgress] = useState<number>(0);
   
@@ -77,20 +77,6 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
-      const hour = now.getHours();
-
-      // Greeting Logic
-      if (hour >= 5 && hour < 11) {
-        setGreeting({ text: '早安，新的一天开始了', icon: <Sun className="text-amber-500" /> });
-      } else if (hour >= 11 && hour < 13) {
-        setGreeting({ text: '午餐时间，记得按时吃饭', icon: <CloudSun className="text-orange-500" /> });
-      } else if (hour >= 13 && hour < 18) {
-        setGreeting({ text: '下午好，注意劳逸结合', icon: <CloudSun className="text-amber-600" /> });
-      } else if (hour >= 18 && hour < 22) {
-        setGreeting({ text: '晚上好，今天辛苦了', icon: <Moon className="text-indigo-400" /> });
-      } else {
-        setGreeting({ text: '夜深了，注意早点休息', icon: <Star className="text-violet-400" /> });
-      }
 
       // Countdown Logic (Target 02:00)
       let target = new Date(now);
@@ -163,25 +149,34 @@ const AppContent: React.FC = () => {
 
   const handleExport = () => {
     playCommitSound();
-    const exportData = filteredInventoryData.map(row => ({
+    // Strictly mapping headers as requested by user
+    const exportData = filteredInventoryData.map((row, index) => ({
+      '序号': index + 1,
       '商品名称': row.name,
       '单位': row.unit,
-      '单价': row.price,
-      '上日库存': row.openingStock,
-      '今日进货': row.purchaseIn,
-      '销售': row.salesOut,
-      '赠送': row.giftOut,
-      '寄存': row.returnIn, // Renamed in Export
-      '套餐赠送': row.packageGiftOut,
-      '计算库存': row.calculatedStock,
-      '实际盘点': row.manualCheck ?? '',
-      '备注': row.notes
+      '售价': row.price,
+      '上日库存': row.openingStock || 0,
+      '今日进货': row.purchaseIn || 0,
+      '寄存': row.returnIn || 0,
+      '寄领': row.claimOut || 0,
+      '赠送': row.giftOut || 0,
+      '回馈': row.feedbackOut || 0,
+      '套餐赠送': row.packageGiftOut || 0,
+      '销售': row.salesOut || 0,
+      '初盘': row.manualCheck ?? '',
+      '复盘': row.reCheck ?? '',
+      '备注': row.notes || ''
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, currentDate);
-    XLSX.writeFile(wb, `小栗库存表_${currentDate}.xlsx`);
+    
+    // Format filename: M.D盘点表.xlsx (e.g., 12.4盘点表.xlsx)
+    const dateObj = new Date(currentDate);
+    const m = dateObj.getMonth() + 1;
+    const d = dateObj.getDate();
+    XLSX.writeFile(wb, `${m}.${d}盘点表.xlsx`);
   };
 
   const updateLog = (productId: string, field: keyof DailyLogEntry, value: any, previousValue?: any) => {
@@ -189,8 +184,6 @@ const AppContent: React.FC = () => {
       const dayLog = prev.logs[currentDate] || {};
       let productLog = dayLog[productId];
       
-      // If creating a new log for today, ensure we properly fetch the last closing stock
-      // instead of defaulting openingStock to 0.
       if (!productLog) {
          const derivedOpening = getLastClosingStock(prev, productId, currentDate);
          productLog = {
@@ -201,8 +194,11 @@ const AppContent: React.FC = () => {
             giftOut: 0,
             returnIn: 0,
             packageGiftOut: 0,
+            claimOut: 0,
+            feedbackOut: 0,
             notes: '',
-            manualCheck: undefined
+            manualCheck: undefined,
+            reCheck: undefined
          };
       }
 
@@ -218,7 +214,6 @@ const AppContent: React.FC = () => {
       };
 
       let newOperations = prev.operations || [];
-      // Don't log internal field updates like manualOpeningStock unless necessary, or filter them in display
       if (previousValue !== undefined && previousValue !== value && field !== 'manualOpeningStock' && field !== 'openingStock') {
          const product = prev.products.find(p => p.id === productId);
          if (product) {
@@ -226,9 +221,12 @@ const AppContent: React.FC = () => {
            if (field === 'purchaseIn') type = 'STOCK_IN';
            if (field === 'salesOut') type = 'SALE';
            if (field === 'giftOut') type = 'GIFT';
-           if (field === 'returnIn') type = 'RETURN'; // This is 'Deposit' (寄存)
+           if (field === 'returnIn') type = 'RETURN'; // Deposit
            if (field === 'packageGiftOut') type = 'PACKAGE';
+           if (field === 'claimOut') type = 'CLAIM';
+           if (field === 'feedbackOut') type = 'FEEDBACK';
            if (field === 'manualCheck') type = 'CHECK';
+           if (field === 'reCheck') type = 'RECHECK';
            
            const delta = typeof value === 'number' && typeof previousValue === 'number' ? value - previousValue : undefined;
 
@@ -252,43 +250,35 @@ const AppContent: React.FC = () => {
     });
   };
   
-  // Handler to update stock from Product Manager
   const handleProductStockUpdate = (productId: string, targetStock: number) => {
     const currentRow = tableData.find(r => r.id === productId);
     if (!currentRow) return;
     
-    // Formula: Current = Opening + P + D - S - G - PG
-    // We want to find a NewOpening such that:
-    // Target = NewOpening + P + D - S - G - PG
-    // So: NewOpening = Target - P - D + S + G + PG
-    
+    // Formula: Current = Opening + P + D - Claim - G - Feedback - PG - S
+    // Opening = Target - P - D + Claim + G + Feedback + PG + S
     const p = Number(currentRow.purchaseIn);
     const d = Number(currentRow.returnIn); // Deposit
     const s = Number(currentRow.salesOut);
     const g = Number(currentRow.giftOut);
     const pg = Number(currentRow.packageGiftOut);
+    const c = Number(currentRow.claimOut || 0);
+    const f = Number(currentRow.feedbackOut || 0);
     
-    // Reverse calculation
-    const newOpening = targetStock - p - d + s + g + pg;
+    const newOpening = targetStock - p - d + c + g + f + pg + s;
     
-    // Update the MANUAL opening stock log (Highest Priority)
     updateLog(productId, 'manualOpeningStock', newOpening);
-    // Also update standard openingStock for data consistency viewing elsewhere
     updateLog(productId, 'openingStock', newOpening);
   };
 
   const handleProductAdd = (p: Product, initialStock: number) => {
     setData(prev => {
       const newData = { ...prev, products: [...prev.products, p] };
-      // Always initialize log for new product if stock > 0 OR if it's just created to ensure state is clear
-      // If initialStock > 0, we treat it as a Manual Override for today.
       if (initialStock >= 0) {
         const dayLog = newData.logs[currentDate] || {};
         newData.logs[currentDate] = {
           ...dayLog,
           [p.id]: {
              productId: p.id,
-             // Set BOTH to ensure it sticks
              openingStock: initialStock,
              manualOpeningStock: initialStock, 
              purchaseIn: 0,
@@ -296,8 +286,11 @@ const AppContent: React.FC = () => {
              giftOut: 0,
              returnIn: 0,
              packageGiftOut: 0,
+             claimOut: 0,
+             feedbackOut: 0,
              notes: '初始入库',
-             manualCheck: undefined
+             manualCheck: undefined,
+             reCheck: undefined
           }
         };
       }
@@ -354,7 +347,6 @@ const AppContent: React.FC = () => {
         {/* Modern Brand Card Header */}
         <div className="p-6 pb-2">
             <div className="bg-gradient-to-br from-violet-600 to-fuchsia-600 rounded-2xl p-6 shadow-xl shadow-purple-200/50 text-white relative overflow-hidden group cursor-pointer" onClick={playFocusSound}>
-                {/* Background Decor */}
                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl group-hover:bg-white/20 transition-all duration-700"></div>
                 <div className="absolute bottom-0 left-0 w-16 h-16 bg-fuchsia-500/30 rounded-full translate-y-1/2 -translate-x-1/2 blur-xl"></div>
 
@@ -370,13 +362,8 @@ const AppContent: React.FC = () => {
             </div>
         </div>
         
-        <div className="p-4 mx-4 mt-2 bg-gradient-to-br from-violet-50 to-white rounded-xl border border-purple-50">
-           <div className="flex items-center gap-2 mb-1 text-sm font-bold text-slate-700">
-             {greeting.icon}
-             <span>今日寄语</span>
-           </div>
-           <p className="text-xs text-slate-500 leading-relaxed">{greeting.text}</p>
-        </div>
+        {/* Joke Widget */}
+        <JokeWidget />
 
         {/* Sidebar Weather Widget */}
         <WeatherWidget />

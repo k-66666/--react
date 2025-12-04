@@ -1,6 +1,6 @@
 import React from 'react';
 import { OperationLog } from '../types';
-import { ArrowDownLeft, ArrowUpRight, CheckCircle, Package, Gift, RefreshCcw, Search, Clock, ArrowDown } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, CheckCircle, Package, Gift, RefreshCcw, Search, Clock, ArrowDown, ExternalLink, HeartHandshake } from 'lucide-react';
 
 interface Props {
   logs: OperationLog[];
@@ -12,8 +12,12 @@ export const OperationHistory: React.FC<Props> = ({ logs }) => {
       case 'STOCK_IN': return <ArrowDownLeft className="text-blue-500" size={20} />;
       case 'SALE': return <ArrowUpRight className="text-emerald-500" size={20} />;
       case 'CHECK': return <CheckCircle className="text-purple-500" size={20} />;
+      case 'RECHECK': return <CheckCircle className="text-purple-700" size={20} />;
       case 'GIFT': return <Gift className="text-orange-500" size={20} />;
-      case 'RETURN': return <ArrowDown className="text-indigo-500" size={20} />; // Deposit Icon
+      case 'RETURN': return <ArrowDown className="text-indigo-500" size={20} />; // Deposit
+      case 'CLAIM': return <ExternalLink className="text-amber-600" size={20} />;
+      case 'FEEDBACK': return <HeartHandshake className="text-rose-500" size={20} />;
+      case 'PACKAGE': return <Package className="text-orange-400" size={20} />;
       default: return <Package className="text-slate-400" size={20} />;
     }
   };
@@ -22,9 +26,12 @@ export const OperationHistory: React.FC<Props> = ({ logs }) => {
     switch (type) {
       case 'STOCK_IN': return '进货';
       case 'SALE': return '销售';
-      case 'CHECK': return '盘点';
+      case 'CHECK': return '初盘';
+      case 'RECHECK': return '复盘';
       case 'GIFT': return '赠送';
-      case 'RETURN': return '寄存'; // Renamed to Deposit
+      case 'RETURN': return '寄存'; 
+      case 'CLAIM': return '寄领';
+      case 'FEEDBACK': return '回馈';
       case 'PACKAGE': return '套餐';
       default: return '修改';
     }
@@ -35,8 +42,12 @@ export const OperationHistory: React.FC<Props> = ({ logs }) => {
       case 'STOCK_IN': return 'bg-blue-50 text-blue-700 border-blue-100';
       case 'SALE': return 'bg-emerald-50 text-emerald-700 border-emerald-100';
       case 'CHECK': return 'bg-purple-50 text-purple-700 border-purple-100';
+      case 'RECHECK': return 'bg-purple-100 text-purple-800 border-purple-200';
       case 'GIFT': return 'bg-orange-50 text-orange-700 border-orange-100';
-      case 'RETURN': return 'bg-indigo-50 text-indigo-700 border-indigo-100'; // Deposit Color
+      case 'RETURN': return 'bg-indigo-50 text-indigo-700 border-indigo-100'; // Deposit
+      case 'CLAIM': return 'bg-amber-50 text-amber-700 border-amber-100';
+      case 'FEEDBACK': return 'bg-rose-50 text-rose-700 border-rose-100';
+      case 'PACKAGE': return 'bg-orange-50 text-orange-600 border-orange-100';
       default: return 'bg-slate-50 text-slate-700 border-slate-100';
     }
   };

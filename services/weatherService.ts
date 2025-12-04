@@ -17,6 +17,9 @@ export const getWeather = async (lat: number, lon: number): Promise<WeatherData 
     const response = await fetch(
       `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,is_day&timezone=auto`
     );
+    if (!response.ok) {
+        throw new Error('Weather API request failed');
+    }
     const data = await response.json();
     return {
       temperature: data.current.temperature_2m,
@@ -24,7 +27,8 @@ export const getWeather = async (lat: number, lon: number): Promise<WeatherData 
       isDay: data.current.is_day
     };
   } catch (e) {
-    console.error("Failed to fetch weather", e);
+    // Silent fail to avoid disrupting user experience
+    console.warn("Weather fetch failed (likely network or rate limit):", e);
     return null;
   }
 };

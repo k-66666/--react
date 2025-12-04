@@ -8,15 +8,25 @@ export interface Product {
 
 export interface DailyLogEntry {
   productId: string;
-  openingStock: number; // Yesterday's closing (Calculated or inherited)
-  manualOpeningStock?: number; // Priority Override: Manually set opening stock (New product / Stock correction)
-  purchaseIn: number;   // Today's purchase
-  salesOut: number;     // Sales
-  giftOut: number;      // Gifts given
-  returnIn: number;     // Customer returns / Deposit
-  packageGiftOut: number; // Package gifts
+  openingStock: number; // Yesterday's closing
+  manualOpeningStock?: number; // Priority Override
+  
+  // IN (+ Stock)
+  purchaseIn: number;   // 进货
+  returnIn: number;     // 寄存 (Deposit)
+
+  // OUT (- Stock)
+  claimOut: number;     // 寄领 (New)
+  giftOut: number;      // 赠送
+  feedbackOut: number;  // 回馈 (New)
+  packageGiftOut: number; // 套餐赠送
+  salesOut: number;     // 销售
+
+  // CHECKS
+  manualCheck?: number; // 初盘 (Initial Check)
+  reCheck?: number;     // 复盘 (Re-Check) (New)
+  
   notes: string;
-  manualCheck?: number; // Physical count if different
 }
 
 export interface DailyLog {
@@ -26,23 +36,22 @@ export interface DailyLog {
 export interface OperationLog {
   id: string;
   timestamp: number;
-  type: 'STOCK_IN' | 'SALE' | 'GIFT' | 'RETURN' | 'PACKAGE' | 'CHECK' | 'MODIFY';
+  type: 'STOCK_IN' | 'SALE' | 'GIFT' | 'RETURN' | 'PACKAGE' | 'CLAIM' | 'FEEDBACK' | 'CHECK' | 'RECHECK' | 'MODIFY';
   productName: string;
   detail: string;
-  delta?: number; // The amount changed (e.g., +5, -2)
+  delta?: number;
 }
 
-// Map: "YYYY-MM-DD" -> DailyLog
 export interface AppData {
   products: Product[];
   logs: Record<string, DailyLog>;
-  operations: OperationLog[]; // New: Audit trail
+  operations: OperationLog[];
 }
 
 export interface TableRowData extends Product, DailyLogEntry {
-  calculatedStock: number; // opening + purchase + return - sales - gift - packageGift
-  discrepancy: number; // calculated - manualCheck (if manualCheck exists)
-  isManualOpening?: boolean; // UI Flag: Was the opening stock manually set?
+  calculatedStock: number; 
+  discrepancy: number; // calculated - manualCheck
+  isManualOpening?: boolean;
 }
 
 export enum ViewMode {
@@ -50,5 +59,5 @@ export enum ViewMode {
   PRODUCTS = 'PRODUCTS',
   ANALYTICS = 'ANALYTICS',
   SETTINGS = 'SETTINGS',
-  HISTORY = 'HISTORY' // New view
+  HISTORY = 'HISTORY'
 }

@@ -98,7 +98,7 @@ export const InventoryTable: React.FC<Props> = ({ data, onUpdate, dateStr }) => 
             focus:outline-none focus:bg-white focus:ring-4 focus:ring-violet-200/50 
             focus:scale-110 focus:shadow-xl focus:z-50 focus:font-bold focus:text-violet-800
             ${disabled ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-white/40 cursor-text active:bg-white/60'}
-            ${type === 'number' ? 'text-2xl font-mono tracking-tight font-medium' : 'text-lg'}
+            ${type === 'number' ? 'text-xl font-mono tracking-tight font-medium' : 'text-lg'}
             ${className}
           `}
         />
@@ -116,52 +116,72 @@ export const InventoryTable: React.FC<Props> = ({ data, onUpdate, dateStr }) => 
         <table className="w-full text-left whitespace-nowrap border-separate border-spacing-y-0">
           <thead className="bg-purple-50/90 text-purple-900 font-bold sticky top-0 z-10 backdrop-blur-sm text-lg shadow-sm">
             <tr>
-              <th className="px-4 py-5 w-16 text-center sticky left-0 bg-purple-50 z-20">#</th>
+              <th className="px-4 py-5 w-16 text-center sticky left-0 bg-purple-50 z-20">序号</th>
               <th 
-                className="px-6 py-5 w-[25%] min-w-[280px] sticky left-16 bg-purple-50 z-20 cursor-pointer hover:bg-purple-100/50 transition-colors"
+                className="px-6 py-5 w-[22%] min-w-[200px] sticky left-16 bg-purple-50 z-20 cursor-pointer hover:bg-purple-100/50 transition-colors"
                 onClick={() => handleSort('name')}
               >
                 商品名称 <SortIcon active={sortKey === 'name'} />
               </th>
-              <th className="px-4 py-5 w-24 text-center">单位</th>
+              <th className="px-4 py-5 w-20 text-center">单位</th>
               <th 
-                className="px-4 py-5 w-28 text-right cursor-pointer hover:bg-purple-100/50 transition-colors"
+                className="px-4 py-5 w-24 text-right cursor-pointer hover:bg-purple-100/50 transition-colors"
                 onClick={() => handleSort('price')}
               >
-                单价 <SortIcon active={sortKey === 'price'} />
+                售价 <SortIcon active={sortKey === 'price'} />
               </th>
-              <th className="px-4 py-5 w-24 text-center text-slate-500">上日</th>
-              <th className="px-2 py-5 w-24 text-center text-blue-600 bg-blue-50/50 rounded-t-xl mx-1">进货</th>
+              <th className="px-4 py-5 w-24 text-center text-slate-500">上日库存</th>
+              
+              <th className="px-2 py-5 w-24 text-center text-blue-600 bg-blue-50/50 rounded-t-xl mx-1">今日进货</th>
+              <th className="px-2 py-5 w-20 text-center text-indigo-600 bg-indigo-50/50 rounded-t-xl mx-1">寄存</th>
+              
+              <th className="px-2 py-5 w-20 text-center text-orange-600 bg-orange-50/20 rounded-t-xl mx-1">寄领</th>
+              <th className="px-2 py-5 w-20 text-center text-orange-600 bg-orange-50/20 rounded-t-xl mx-1">赠送</th>
+              <th className="px-2 py-5 w-20 text-center text-orange-600 bg-orange-50/20 rounded-t-xl mx-1">回馈</th>
+              <th className="px-2 py-5 w-20 text-center text-orange-600 bg-orange-50/20 rounded-t-xl mx-1">套餐赠送</th>
+              
               <th 
                 className="px-2 py-5 w-24 text-center text-emerald-600 bg-emerald-50/50 rounded-t-xl mx-1 cursor-pointer hover:bg-emerald-100/50"
                 onClick={() => handleSort('salesOut')}
               >
                 销售 <SortIcon active={sortKey === 'salesOut'} />
               </th>
-              <th className="px-2 py-5 w-20 text-center text-orange-600">赠送</th>
-              <th className="px-2 py-5 w-20 text-center text-indigo-600 bg-indigo-50/50 rounded-t-xl mx-1">寄存</th>
-              <th className="px-2 py-5 w-20 text-center text-orange-600">套餐</th>
-              <th 
-                 className="px-4 py-5 w-32 text-center text-violet-700 bg-violet-100/50 text-xl border-x border-violet-200 cursor-pointer hover:bg-violet-200/50"
-                 onClick={() => handleSort('calculatedStock')}
-              >
-                实时库存 <SortIcon active={sortKey === 'calculatedStock'} />
+
+              {/* Only used for Calculation display - not a column in export or requested list, but useful to keep as reference? 
+                  The user asked for a specific table order. Usually the 'Calculated Stock' is useful to see before Manual Check.
+                  But the user's excel image didn't have "Realtime Stock". It had "Initial Check" and "Re Check".
+                  I will hide Calculated Stock column if not requested, OR keep it as a guide. 
+                  Let's keep it but maybe styled differently or match the request. 
+                  Actually, the request image DOES NOT show "Calculated Stock". It shows inputs.
+                  However, "Realtime Stock" is usually essential for the system to tell you what it thinks you have.
+                  I'll keep it as a visual guide but place it before Initial Check or maybe after.
+                  Wait, the request says: "System strictly arranged as: 序号 | 商品名称 | 单位 | 售价 | 上日库存 | 今日进货 | 寄存 | 寄领 | 赠送 | 回馈 | 套餐赠送 | 销售 | 初盘 | 复盘 | 备注"
+                  It seems "Calculated Stock" is NOT in the requested visual columns. 
+                  However, without it, the user doesn't know if "Initial Check" matches or not.
+                  I will render the Discrepancy INSIDE the Initial/Recheck inputs or as a subtle hint.
+                  Or I will add it as a small read-only column because it's vital for a "System".
+                  Let's stick to the requested columns strictly.
+              */}
+              
+              <th className="px-2 py-5 w-24 text-center text-purple-800 bg-purple-100/30 rounded-t-xl font-bold border-l border-purple-100">
+                初盘
               </th>
-              <th className="px-2 py-5 w-28 text-center text-purple-800 bg-purple-100/30 rounded-t-xl font-bold border-l border-purple-100">
-                实盘 (点我)
+              <th className="px-2 py-5 w-24 text-center text-purple-800 bg-purple-100/30 rounded-t-xl font-bold border-r border-purple-100">
+                复盘
               </th>
-              <th className="px-4 py-5 w-32 text-center text-slate-600 bg-slate-50/50">
-                核对结果
-              </th>
-              <th className="px-8 py-5 min-w-[200px] w-auto">备注</th>
+              
+              <th className="px-8 py-5 min-w-[150px] w-auto">备注</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-purple-50 text-lg">
             {sortedData.map((row, index) => {
-              const lowStock = row.calculatedStock <= 5;
-              const hasCheck = row.manualCheck !== undefined && row.manualCheck !== null;
-              const diff = hasCheck ? (row.manualCheck! - row.calculatedStock) : 0;
-              
+              // Discrepancy Calculation for Tooltip/Visual Aid
+              // Compare ReCheck if exists, else Initial.
+              const checkVal = row.reCheck ?? row.manualCheck;
+              const hasCheck = checkVal !== undefined && checkVal !== null;
+              const diff = hasCheck ? (checkVal! - row.calculatedStock) : 0;
+              const diffColor = diff === 0 ? 'text-emerald-500' : diff > 0 ? 'text-amber-500' : 'text-red-500';
+
               return (
                 <tr 
                    key={row.id} 
@@ -171,13 +191,16 @@ export const InventoryTable: React.FC<Props> = ({ data, onUpdate, dateStr }) => 
                   <td className="px-6 py-3 font-medium text-slate-700 sticky left-16 bg-transparent group-hover:bg-white transition-colors border-r border-transparent group-hover:border-purple-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] text-lg">
                     <div className="flex items-center gap-3">
                       {row.name}
-                      {lowStock && <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-400 animate-pulse shadow-sm" title="库存紧张"></span>}
+                      {/* Show small calculated stock hint */}
+                      <span className="text-xs text-slate-300 font-normal bg-slate-50 px-1 rounded border border-slate-100" title="系统计算库存">
+                         sys:{row.calculatedStock}
+                      </span>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center text-slate-400 text-base">{row.unit}</td>
                   <td className="px-4 py-3 text-right text-slate-500 font-mono text-lg">¥{row.price}</td>
                   
-                  {/* Opening Stock with Manual Override Indicator */}
+                  {/* Opening Stock */}
                   <td className="px-4 py-3 text-center font-medium text-xl font-mono relative">
                     <span className={`${row.isManualOpening ? 'text-violet-600 border-b-2 border-violet-300' : 'text-slate-400'}`}>
                         {row.openingStock}
@@ -189,30 +212,32 @@ export const InventoryTable: React.FC<Props> = ({ data, onUpdate, dateStr }) => 
                     )}
                   </td>
 
-                  {/* Inputs - Larger Hit Area */}
+                  {/* IN */}
                   <td className="px-1 py-1 bg-blue-50/20 group-hover:bg-blue-50/40 transition-colors">
                     <InputCell value={row.purchaseIn} onChange={(v, pv) => onUpdate(row.id, 'purchaseIn', v, pv)} className="text-blue-600 font-bold" />
                   </td>
-                  <td className="px-1 py-1 bg-emerald-50/20 group-hover:bg-emerald-50/40 transition-colors">
-                    <InputCell value={row.salesOut} onChange={(v, pv) => onUpdate(row.id, 'salesOut', v, pv)} className="text-emerald-600 font-bold" />
+                  <td className="px-1 py-1 bg-indigo-50/20 group-hover:bg-indigo-50/40 transition-colors">
+                    <InputCell value={row.returnIn} onChange={(v, pv) => onUpdate(row.id, 'returnIn', v, pv)} className="text-indigo-600 font-bold" />
+                  </td>
+
+                  {/* OUT */}
+                  <td className="px-1 py-1">
+                    <InputCell value={row.claimOut} onChange={(v, pv) => onUpdate(row.id, 'claimOut', v, pv)} className="text-orange-600" />
                   </td>
                   <td className="px-1 py-1">
                     <InputCell value={row.giftOut} onChange={(v, pv) => onUpdate(row.id, 'giftOut', v, pv)} className="text-orange-600" />
                   </td>
-                  {/* Deposit (Previously Return) - Now Indigo */}
-                  <td className="px-1 py-1 bg-indigo-50/20 group-hover:bg-indigo-50/40 transition-colors">
-                    <InputCell value={row.returnIn} onChange={(v, pv) => onUpdate(row.id, 'returnIn', v, pv)} className="text-indigo-600 font-bold" />
+                  <td className="px-1 py-1">
+                    <InputCell value={row.feedbackOut} onChange={(v, pv) => onUpdate(row.id, 'feedbackOut', v, pv)} className="text-orange-600" />
                   </td>
                   <td className="px-1 py-1">
                     <InputCell value={row.packageGiftOut} onChange={(v, pv) => onUpdate(row.id, 'packageGiftOut', v, pv)} className="text-orange-600" />
                   </td>
-
-                  {/* Calculated Stock */}
-                  <td className={`px-4 py-3 text-center font-bold text-2xl font-mono border-x border-violet-100 bg-violet-50/30 group-hover:bg-violet-50/50 transition-colors ${row.calculatedStock < 0 ? 'text-red-500' : 'text-violet-700'}`}>
-                    {row.calculatedStock}
+                  <td className="px-1 py-1 bg-emerald-50/20 group-hover:bg-emerald-50/40 transition-colors">
+                    <InputCell value={row.salesOut} onChange={(v, pv) => onUpdate(row.id, 'salesOut', v, pv)} className="text-emerald-600 font-bold" />
                   </td>
 
-                  {/* Manual Check Input */}
+                  {/* CHECKS */}
                   <td className="px-1 py-1 bg-purple-100/30 group-hover:bg-purple-100/50 border-l border-purple-100 transition-colors">
                      <InputCell 
                         value={row.manualCheck ?? ''} 
@@ -220,23 +245,17 @@ export const InventoryTable: React.FC<Props> = ({ data, onUpdate, dateStr }) => 
                         className="text-purple-800 font-bold"
                      />
                   </td>
-
-                  {/* Discrepancy Result */}
-                  <td className="px-4 py-3 text-center bg-slate-50/30 group-hover:bg-slate-50/60 transition-colors">
-                     {!hasCheck ? (
-                        <span className="text-slate-300">-</span>
-                     ) : diff === 0 ? (
-                        <div className="flex items-center justify-center gap-1 text-emerald-500 font-bold text-sm bg-emerald-50 py-1 px-2 rounded-lg border border-emerald-100">
-                           <CheckCircle2 size={14}/> 正常
-                        </div>
-                     ) : diff > 0 ? (
-                        <div className="flex items-center justify-center gap-1 text-amber-600 font-bold text-sm bg-amber-50 py-1 px-2 rounded-lg border border-amber-100 animate-pulse">
-                           <AlertCircle size={14}/> 多了 {diff}
-                        </div>
-                     ) : (
-                        <div className="flex items-center justify-center gap-1 text-red-500 font-bold text-sm bg-red-50 py-1 px-2 rounded-lg border border-red-100 animate-pulse">
-                           <AlertCircle size={14}/> 少了 {Math.abs(diff)}
-                        </div>
+                  <td className="px-1 py-1 bg-purple-100/30 group-hover:bg-purple-100/50 border-r border-purple-100 transition-colors relative">
+                     <InputCell 
+                        value={row.reCheck ?? ''} 
+                        onChange={(v, pv) => onUpdate(row.id, 'reCheck', v === '' ? undefined : v, pv)} 
+                        className="text-purple-900 font-bold"
+                     />
+                     {/* Visual Discrepancy Indicator inside ReCheck cell if present */}
+                     {hasCheck && (
+                       <div className={`absolute bottom-1 right-2 text-[10px] font-bold ${diffColor} pointer-events-none`}>
+                          {diff > 0 ? `+${diff}` : diff < 0 ? diff : '✓'}
+                       </div>
                      )}
                   </td>
 

@@ -169,12 +169,22 @@ export const getLastClosingStock = (data: AppData, productId: string, beforeDate
           : Number(log.openingStock);
 
       // Calculate closing stock for that day
-      // Closing = Opening + Purchase + Return - Sales - Gift - Package
-      const closing = effectiveOpening + Number(log.purchaseIn) + Number(log.returnIn) 
-                    - Number(log.salesOut) - Number(log.giftOut) - Number(log.packageGiftOut);
+      // Closing = Opening + Purchase + Deposit - Sales - Gift - Package - Claim - Feedback
+      const closing = effectiveOpening 
+                    + Number(log.purchaseIn) + Number(log.returnIn) 
+                    - Number(log.salesOut) - Number(log.giftOut) 
+                    - Number(log.packageGiftOut) - Number(log.claimOut || 0) - Number(log.feedbackOut || 0);
       
-      // If there was a manual check that day, it overrides the calculated closing
-      // (This serves as the starting point for the next day)
+      // If there was a manual check that day (ReCheck/Initial), it overrides the calculated closing
+      // ReCheck takes priority over ManualCheck if present? Usually ManualCheck is the final truth.
+      // Let's assume reCheck is just a second verification and manualCheck (Initial) is the primary one, 
+      // OR let's assume manualCheck is the "Initial Check" and we use that if reCheck is empty, or reCheck if present.
+      // For simplified logic inheritance, we usually take the 'verified' stock.
+      // If ReCheck exists, use it, else if ManualCheck exists, use it.
+      
+      if (log.reCheck !== undefined && log.reCheck !== null) {
+          return Number(log.reCheck);
+      }
       if (log.manualCheck !== undefined && log.manualCheck !== null) {
         return Number(log.manualCheck);
       }
@@ -192,11 +202,6 @@ export const getTableDataForDate = (data: AppData, dateStr: string): TableRowDat
   return data.products.map(product => {
     let openingStock = 0;
     let isManualOpening = false;
-    
-    // Logic:
-    // 1. If we have an EXPLICIT manual opening stock for today (user set it), use it.
-    // 2. Else, if we have a standard log, use it (but check if it was manual).
-    // 3. Else, inherit from history.
     
     const productLog = todaysLog[product.id];
 
@@ -220,8 +225,11 @@ export const getTableDataForDate = (data: AppData, dateStr: string): TableRowDat
       giftOut: 0,
       returnIn: 0, // Deposit
       packageGiftOut: 0,
+      claimOut: 0, // 寄领
+      feedbackOut: 0, // 回馈
       notes: '',
-      manualCheck: undefined
+      manualCheck: undefined,
+      reCheck: undefined
     };
     
     // Strict Number casting
@@ -231,13 +239,20 @@ export const getTableDataForDate = (data: AppData, dateStr: string): TableRowDat
     const s = Number(entry.salesOut);
     const g = Number(entry.giftOut);
     const pg = Number(entry.packageGiftOut);
+    const c = Number(entry.claimOut || 0);
+    const f = Number(entry.feedbackOut || 0);
 
-    // FORMULA: Opening + Purchase + Deposit - Sales - Gift - Package
-    const calculatedStock = o + p + r - s - g - pg;
+    // FORMULA: Opening + Purchase + Deposit - Claim - Gift - Feedback - Package - Sales
+    const calculatedStock = o + p + r - c - g - f - pg - s;
     
-    // Discrepancy = Manual - Calculated
-    const discrepancy = (entry.manualCheck !== undefined && entry.manualCheck !== null) 
-      ? Number(entry.manualCheck) - calculatedStock 
+    // Discrepancy logic: compares calculated vs (ReCheck or Initial Check)
+    // If ReCheck exists, compare against that. Else compare against Initial.
+    const finalCheck = (entry.reCheck !== undefined && entry.reCheck !== null) 
+        ? Number(entry.reCheck) 
+        : (entry.manualCheck !== undefined && entry.manualCheck !== null ? Number(entry.manualCheck) : null);
+
+    const discrepancy = (finalCheck !== null) 
+      ? finalCheck - calculatedStock 
       : 0;
 
     return {

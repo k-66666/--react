@@ -288,7 +288,7 @@ export const ProductManager: React.FC<Props> = ({ products, onAdd, onEdit, onDel
           <thead className="bg-purple-50/50 text-violet-600 uppercase font-bold text-xs tracking-wider">
             <tr>
               <th className="px-3 py-5 w-10 text-center text-purple-300">
-                 {sortKey === 'default' ? <ArrowUpDown size={16} /> : <Ban size={16} title="排序模式下禁止拖拽" />}
+                 {sortKey === 'default' ? <ArrowUpDown size={16} /> : <div className="flex justify-center" title="排序模式下禁止拖拽"><Ban size={16} /></div>}
               </th>
               <th className="px-6 py-5 w-10">
                 <button onClick={toggleSelectAll} className="text-violet-300 hover:text-violet-600 transition-colors">
