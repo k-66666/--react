@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { TableRowData, DailyLogEntry } from '../types';
 import { playFocusSound, playCommitSound } from '../services/soundService';
-import { ArrowUpDown, AlertCircle, CheckCircle2, RefreshCcw } from 'lucide-react';
+import { ArrowUpDown, RefreshCcw } from 'lucide-react';
 
 interface Props {
   data: TableRowData[];
@@ -147,26 +147,12 @@ export const InventoryTable: React.FC<Props> = ({ data, onUpdate, dateStr }) => 
                 销售 <SortIcon active={sortKey === 'salesOut'} />
               </th>
 
-              {/* Only used for Calculation display - not a column in export or requested list, but useful to keep as reference? 
-                  The user asked for a specific table order. Usually the 'Calculated Stock' is useful to see before Manual Check.
-                  But the user's excel image didn't have "Realtime Stock". It had "Initial Check" and "Re Check".
-                  I will hide Calculated Stock column if not requested, OR keep it as a guide. 
-                  Let's keep it but maybe styled differently or match the request. 
-                  Actually, the request image DOES NOT show "Calculated Stock". It shows inputs.
-                  However, "Realtime Stock" is usually essential for the system to tell you what it thinks you have.
-                  I'll keep it as a visual guide but place it before Initial Check or maybe after.
-                  Wait, the request says: "System strictly arranged as: 序号 | 商品名称 | 单位 | 售价 | 上日库存 | 今日进货 | 寄存 | 寄领 | 赠送 | 回馈 | 套餐赠送 | 销售 | 初盘 | 复盘 | 备注"
-                  It seems "Calculated Stock" is NOT in the requested visual columns. 
-                  However, without it, the user doesn't know if "Initial Check" matches or not.
-                  I will render the Discrepancy INSIDE the Initial/Recheck inputs or as a subtle hint.
-                  Or I will add it as a small read-only column because it's vital for a "System".
-                  Let's stick to the requested columns strictly.
-              */}
-              
-              <th className="px-2 py-5 w-24 text-center text-purple-800 bg-purple-100/30 rounded-t-xl font-bold border-l border-purple-100">
+              {/* Initial Check (Calculated) */}
+              <th className="px-2 py-5 w-32 text-center text-purple-800 bg-purple-100/30 rounded-t-xl font-bold border-l border-purple-100">
                 初盘
               </th>
-              <th className="px-2 py-5 w-24 text-center text-purple-800 bg-purple-100/30 rounded-t-xl font-bold border-r border-purple-100">
+              {/* Re-Check (Manual) */}
+              <th className="px-2 py-5 w-32 text-center text-purple-800 bg-purple-100/30 rounded-t-xl font-bold border-r border-purple-100">
                 复盘
               </th>
               
@@ -175,11 +161,9 @@ export const InventoryTable: React.FC<Props> = ({ data, onUpdate, dateStr }) => 
           </thead>
           <tbody className="divide-y divide-purple-50 text-lg">
             {sortedData.map((row, index) => {
-              // Discrepancy Calculation for Tooltip/Visual Aid
-              // Compare ReCheck if exists, else Initial.
-              const checkVal = row.reCheck ?? row.manualCheck;
-              const hasCheck = checkVal !== undefined && checkVal !== null;
-              const diff = hasCheck ? (checkVal! - row.calculatedStock) : 0;
+              // Discrepancy Calculation: ReCheck - Initial (Calculated)
+              const hasCheck = row.reCheck !== undefined && row.reCheck !== null;
+              const diff = hasCheck ? (row.reCheck! - row.calculatedStock) : 0;
               const diffColor = diff === 0 ? 'text-emerald-500' : diff > 0 ? 'text-amber-500' : 'text-red-500';
 
               return (
@@ -191,10 +175,6 @@ export const InventoryTable: React.FC<Props> = ({ data, onUpdate, dateStr }) => 
                   <td className="px-6 py-3 font-medium text-slate-700 sticky left-16 bg-transparent group-hover:bg-white transition-colors border-r border-transparent group-hover:border-purple-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] text-lg">
                     <div className="flex items-center gap-3">
                       {row.name}
-                      {/* Show small calculated stock hint */}
-                      <span className="text-xs text-slate-300 font-normal bg-slate-50 px-1 rounded border border-slate-100" title="系统计算库存">
-                         sys:{row.calculatedStock}
-                      </span>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center text-slate-400 text-base">{row.unit}</td>
@@ -237,14 +217,14 @@ export const InventoryTable: React.FC<Props> = ({ data, onUpdate, dateStr }) => 
                     <InputCell value={row.salesOut} onChange={(v, pv) => onUpdate(row.id, 'salesOut', v, pv)} className="text-emerald-600 font-bold" />
                   </td>
 
-                  {/* CHECKS */}
+                  {/* INITIAL CHECK (AUTO CALCULATED) */}
                   <td className="px-1 py-1 bg-purple-100/30 group-hover:bg-purple-100/50 border-l border-purple-100 transition-colors">
-                     <InputCell 
-                        value={row.manualCheck ?? ''} 
-                        onChange={(v, pv) => onUpdate(row.id, 'manualCheck', v === '' ? undefined : v, pv)} 
-                        className="text-purple-800 font-bold"
-                     />
+                     <div className="flex items-center justify-center h-14 text-purple-700 font-mono font-bold text-xl rounded-xl cursor-default" title="系统自动计算库存">
+                        {row.calculatedStock}
+                     </div>
                   </td>
+
+                  {/* RE-CHECK (MANUAL INPUT) */}
                   <td className="px-1 py-1 bg-purple-100/30 group-hover:bg-purple-100/50 border-r border-purple-100 transition-colors relative">
                      <InputCell 
                         value={row.reCheck ?? ''} 

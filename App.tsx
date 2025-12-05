@@ -163,7 +163,7 @@ const AppContent: React.FC = () => {
       '回馈': row.feedbackOut || 0,
       '套餐赠送': row.packageGiftOut || 0,
       '销售': row.salesOut || 0,
-      '初盘': row.manualCheck ?? '',
+      '初盘': row.calculatedStock, // CHANGED: Now exports the calculated system stock
       '复盘': row.reCheck ?? '',
       '备注': row.notes || ''
     }));
