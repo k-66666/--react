@@ -112,15 +112,6 @@ const AppContent: React.FC = () => {
     return getTableDataForDate(data, currentDate);
   }, [data, currentDate]);
   
-  // Create a map of ID -> Stock for ProductManager
-  const stockMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    tableData.forEach(row => {
-      map[row.id] = row.calculatedStock;
-    });
-    return map;
-  }, [tableData]);
-  
   // Filtered Data for Inventory View
   const filteredInventoryData = useMemo(() => {
     return tableData.filter(item => 
@@ -250,12 +241,13 @@ const AppContent: React.FC = () => {
     });
   };
   
-  const handleProductStockUpdate = (productId: string, targetStock: number) => {
+  // Reverse logic: Adjust Manual Opening Stock to match target Calculated Stock
+  const handleOverrideCalculatedStock = (productId: string, targetStock: number) => {
     const currentRow = tableData.find(r => r.id === productId);
     if (!currentRow) return;
     
-    // Formula: Current = Opening + P + D - Claim - G - Feedback - PG - S
-    // Opening = Target - P - D + Claim + G + Feedback + PG + S
+    // Formula: Calculated = Opening + P + D - C - G - F - PG - S
+    // Therefore: Opening = Target - P - D + C + G + F + PG + S
     const p = Number(currentRow.purchaseIn);
     const d = Number(currentRow.returnIn); // Deposit
     const s = Number(currentRow.salesOut);
@@ -266,34 +258,15 @@ const AppContent: React.FC = () => {
     
     const newOpening = targetStock - p - d + c + g + f + pg + s;
     
+    // Update the log with new opening stock (using manualOpeningStock to persist override)
     updateLog(productId, 'manualOpeningStock', newOpening);
     updateLog(productId, 'openingStock', newOpening);
   };
 
-  const handleProductAdd = (p: Product, initialStock: number) => {
+  const handleProductAdd = (p: Product) => {
     setData(prev => {
       const newData = { ...prev, products: [...prev.products, p] };
-      if (initialStock >= 0) {
-        const dayLog = newData.logs[currentDate] || {};
-        newData.logs[currentDate] = {
-          ...dayLog,
-          [p.id]: {
-             productId: p.id,
-             openingStock: initialStock,
-             manualOpeningStock: initialStock, 
-             purchaseIn: 0,
-             salesOut: 0,
-             giftOut: 0,
-             returnIn: 0,
-             packageGiftOut: 0,
-             claimOut: 0,
-             feedbackOut: 0,
-             notes: '初始入库',
-             manualCheck: undefined,
-             reCheck: undefined
-          }
-        };
-      }
+      // Default to 0 stock for new product if logs don't exist
       return newData;
     });
   };
@@ -474,6 +447,7 @@ const AppContent: React.FC = () => {
               <InventoryTable 
                 data={filteredInventoryData} 
                 onUpdate={updateLog}
+                onOverrideStock={handleOverrideCalculatedStock}
                 dateStr={currentDate}
                 onToggleHistory={() => setView(ViewMode.HISTORY)}
               />
@@ -489,8 +463,6 @@ const AppContent: React.FC = () => {
                 onDelete={handleProductDelete}
                 onBatchDelete={handleBatchProductDelete}
                 onBatchEdit={handleBatchProductEdit}
-                stockMap={stockMap}
-                onUpdateStock={handleProductStockUpdate}
                 onReorder={handleProductReorder}
               />
             </div>

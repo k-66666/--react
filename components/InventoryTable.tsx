@@ -6,13 +6,14 @@ import { ArrowUpDown, RefreshCcw } from 'lucide-react';
 interface Props {
   data: TableRowData[];
   onUpdate: (productId: string, field: keyof DailyLogEntry, value: any, previousValue?: any) => void;
+  onOverrideStock: (productId: string, newStock: number) => void; // New Prop
   dateStr: string;
   onToggleHistory: () => void;
 }
 
 type SortKey = 'name' | 'price' | 'calculatedStock' | 'salesOut' | null;
 
-export const InventoryTable: React.FC<Props> = ({ data, onUpdate, dateStr }) => {
+export const InventoryTable: React.FC<Props> = ({ data, onUpdate, onOverrideStock, dateStr }) => {
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
@@ -217,11 +218,13 @@ export const InventoryTable: React.FC<Props> = ({ data, onUpdate, dateStr }) => 
                     <InputCell value={row.salesOut} onChange={(v, pv) => onUpdate(row.id, 'salesOut', v, pv)} className="text-emerald-600 font-bold" />
                   </td>
 
-                  {/* INITIAL CHECK (AUTO CALCULATED) */}
+                  {/* INITIAL CHECK (NOW EDITABLE VIA OVERRIDE) */}
                   <td className="px-1 py-1 bg-purple-100/30 group-hover:bg-purple-100/50 border-l border-purple-100 transition-colors">
-                     <div className="flex items-center justify-center h-14 text-purple-700 font-mono font-bold text-xl rounded-xl cursor-default" title="系统自动计算库存">
-                        {row.calculatedStock}
-                     </div>
+                     <InputCell 
+                        value={row.calculatedStock} 
+                        onChange={(v) => onOverrideStock(row.id, v)} 
+                        className="text-purple-700 font-mono font-bold"
+                     />
                   </td>
 
                   {/* RE-CHECK (MANUAL INPUT) */}
