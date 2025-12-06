@@ -176,12 +176,7 @@ export const getLastClosingStock = (data: AppData, productId: string, beforeDate
                     - Number(log.packageGiftOut) - Number(log.claimOut || 0) - Number(log.feedbackOut || 0);
       
       // If there was a manual check that day (ReCheck/Initial), it overrides the calculated closing
-      // ReCheck takes priority over ManualCheck if present? Usually ManualCheck is the final truth.
-      // Let's assume reCheck is just a second verification and manualCheck (Initial) is the primary one, 
-      // OR let's assume manualCheck is the "Initial Check" and we use that if reCheck is empty, or reCheck if present.
-      // For simplified logic inheritance, we usually take the 'verified' stock.
-      // If ReCheck exists, use it, else if ManualCheck exists, use it.
-      
+      // Priority: ReCheck > ManualCheck > Calculated
       if (log.reCheck !== undefined && log.reCheck !== null) {
           return Number(log.reCheck);
       }
@@ -205,15 +200,18 @@ export const getTableDataForDate = (data: AppData, dateStr: string): TableRowDat
     
     const productLog = todaysLog[product.id];
 
+    // FIX APPLIED HERE:
+    // We strictly follow the rule:
+    // 1. If manualOpeningStock exists (User edited stock in Product Manager for TODAY), use it.
+    // 2. Otherwise, ALWAYS calculate from history (getLastClosingStock).
+    // DO NOT use productLog.openingStock (the cached value) because it might be stale if user edited yesterday's data.
+    
     if (productLog && productLog.manualOpeningStock !== undefined && productLog.manualOpeningStock !== null) {
         // High priority: User manually set the opening stock for today
         openingStock = Number(productLog.manualOpeningStock);
         isManualOpening = true;
-    } else if (productLog && productLog.openingStock !== undefined) {
-        // Standard log exists
-        openingStock = Number(productLog.openingStock);
     } else {
-        // No log for today, calculate from history
+        // Always calculate from history to ensure updates from previous days propagate immediately
         openingStock = getLastClosingStock(data, product.id, dateStr);
     }
 
